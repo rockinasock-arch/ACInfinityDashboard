@@ -90,8 +90,15 @@ class MainActivity : AppCompatActivity() {
                     if (sArr != null) {
                         var hasVpd = false
                         for (s in 0 until sArr.length()) {
-                            val so = sArr.getJSONObject(s); val sv = so.optDouble("sensorData") / 100.0
-                            when (so.optInt("sensorType")) { 1 -> if (sv > 0) temp = sv; 2 -> if (sv > 0) rh = sv; 3 -> if (sv > 0) { vpd = sv; hasVpd = true }; 10, 12 -> if (sv > 0) wt = sv; 11, 13 -> if (sv > 0) ph = sv; 14 -> if (sv > 0) ec = sv }
+                            val so = sArr.getJSONObject(s); val st = so.optInt("sensorType"); val rawVal = so.optDouble("sensorData", 0.0); val sv = rawVal / 100.0
+                            when (st) {
+                                1 -> if (sv > 0) temp = sv
+                                2 -> if (sv > 0) rh = sv
+                                3 -> if (sv > 0) { vpd = sv; hasVpd = true }
+                                11, 13 -> if (sv > 0) ph = sv
+                                14, 15, 16 -> if (sv > 0) ec = if (sv > 20.0) sv / 10.0 else sv
+                                10, 12, 17, 18 -> if (sv > 0) wt = if (sv > 45.0) (sv - 32.0) * 5.0 / 9.0 else sv
+                            }
                         }
                         if (devType == 20 && !hasVpd) vpd = (0.61078 * exp((17.27 * temp) / (temp + 237.3))) * (1.0 - rh / 100.0)
                     }
