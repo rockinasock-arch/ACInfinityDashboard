@@ -97,7 +97,8 @@ class MainActivity : AppCompatActivity() {
                                 3 -> if (sv > 0) { vpd = sv; hasVpd = true }
                                 13 -> if (sv > 0) ph = sv
                                 15 -> if (sv > 0) ec = if (sv > 20.0) sv / 10.0 else sv
-                                16 -> if (sv > 0) wt = if (sv > 45.0) (sv - 32.0) * 5.0 / 9.0 else sv
+                                17 -> if (sv > 0) wt = sv
+                                16 -> if (sv > 0 && wt == null) wt = if (sv > 45.0) (sv - 32.0) * 5.0 / 9.0 else sv
                             }
                         }
                         if (devType == 20 && !hasVpd) vpd = (0.61078 * exp((17.27 * temp) / (temp + 237.3))) * (1.0 - rh / 100.0)
