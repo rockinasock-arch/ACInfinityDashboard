@@ -47,11 +47,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun pollLoop() { if (!polling) return; fetchDevices(); handler.postDelayed({ pollLoop() }, 15000) }
 
-    private fun apiPost(path: String, body: String, tk: String? = null): String {
+    private fun apiPost(path: String, body: String, tk: String? = null, modeApi: Boolean = false): String {
         val conn = (URL("http", listOf("www", "acinfinityserver", "com").joinToString("."), path).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"; doOutput = true; connectTimeout = 10000; readTimeout = 10000
             setRequestProperty("Content-Type", "application/x-www-form-urlencoded"); setRequestProperty("User-Agent", "ACInfinity/1.9.7 (Android)")
-            if (tk != null) { setRequestProperty("token", tk); setRequestProperty("phoneType", "1"); setRequestProperty("appVersion", "1.9.7"); setRequestProperty("minversion", "3.5") }
+            if (tk != null) setRequestProperty("token", tk)
+            if (modeApi) { setRequestProperty("phoneType", "1"); setRequestProperty("appVersion", "1.9.7"); setRequestProperty("minversion", "3.5") }
         }
         conn.outputStream.use { it.write(body.toByteArray()) }
         return (if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText().trim()
@@ -66,7 +67,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun fetchLightSched(devId: String, port: Int, tk: String): Pair<Int, Int>? {
         return try {
-            val res = JSONObject(apiPost("/api/dev/getdevModeSettingList", "devId=$devId&port=$port", tk))
+            val res = JSONObject(apiPost("/api/dev/getdevModeSettingList", "devId=$devId&port=$port", tk, true))
             parseSched(res.optJSONObject("data")) ?: res.optJSONArray("data")?.let { a -> (0 until a.length()).firstNotNullOfOrNull { parseSched(a.optJSONObject(it)) } }
         } catch (_: Exception) { null }
     }
