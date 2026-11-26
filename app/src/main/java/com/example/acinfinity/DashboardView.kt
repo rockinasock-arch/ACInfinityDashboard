@@ -39,9 +39,9 @@ body{background:#050608;color:#F8FAFC;height:100vh;display:flex;overflow:hidden}
 .col{width:50%;padding:14px 18px;display:flex;flex-direction:column;justify-content:space-between;position:relative}
 .col:first-child{border-right:1px solid #1E293B;background:radial-gradient(circle at 50% 45%,#34D39916,transparent 72%)}
 .col:last-child{background:radial-gradient(circle at 50% 45%,#60A5FA16,transparent 72%)}
-.hdr{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:800;letter-spacing:.07em}
+.hdr{display:flex;align-items:center;font-size:14px;font-weight:800;letter-spacing:.07em}
 .dot{width:11px;height:11px;border-radius:50%;background:#34D399;display:inline-block;margin-right:8px}
-.dial{position:absolute;top:38px;right:18px;width:62px;height:62px}
+.dial{position:absolute;top:12px;right:18px;width:62px;height:62px}
 .rings{display:flex;justify-content:space-between;align-items:center;padding:0 4px}
 .ring{width:29vmin;height:29vmin;max-width:172px;max-height:172px;border-radius:50%;border:2.5px solid var(--rc,var(--c));box-shadow:0 0 14px -2px var(--rc,var(--c));display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .6s,box-shadow .6s}
 .ring.vpd{width:35vmin;height:35vmin;max-width:205px;max-height:205px;border-width:3.5px;animation:br var(--bs,4s) ease-in-out infinite}
@@ -57,14 +57,14 @@ body{background:#050608;color:#F8FAFC;height:100vh;display:flex;overflow:hidden}
 .on .pcirc{border-color:var(--c);color:var(--c);box-shadow:0 0 12px var(--c)}
 .spin{animation:sp var(--spd,2s) linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
 </style></head><body>
-  <div class="col" style="--c:#34D399"><div class="hdr"><span><span class="dot" onclick="App.tapDot()"></span><span style="color:#34D399">FLOWER AI+</span></span><span id="fs">SYNCED</span></div>
+  <div class="col" style="--c:#34D399"><div class="hdr"><span class="dot" onclick="App.tapDot()"></span><span style="color:#34D399">FLOWER AI+</span></div>
     <svg class="dial" id="fd" viewBox="0 0 64 64"></svg>
     <div class="rings"><div class="ring" id="ftr"><div class="val" id="ft">--°C</div><div class="lbl">TEMP</div></div>
       <div class="ring vpd" id="fvr"><div class="val" id="fv">--</div><div class="lbl">VPD kPa</div></div>
       <div class="ring" id="fhr"><div class="val" id="fh">--%</div><div class="lbl">RH</div></div></div>
     <div class="hydro"><span class="pill" id="ph">pH --</span><span class="pill" id="ec">EC --</span><span class="pill" id="wt">WATER --°C</span></div>
     <div class="ports" id="fp"></div></div>
-  <div class="col" style="--c:#60A5FA"><div class="hdr"><span style="color:#60A5FA">VEG 69+</span><span id="vs">SYNCED</span></div>
+  <div class="col" style="--c:#60A5FA"><div class="hdr"><span style="color:#60A5FA">VEG 69+</span></div>
     <svg class="dial" id="vd" viewBox="0 0 64 64"></svg>
     <div class="rings"><div class="ring" id="vtr"><div class="val" id="vt">--°C</div><div class="lbl">TEMP</div></div>
       <div class="ring vpd" id="vvr"><div class="val" id="vv">--</div><div class="lbl">VPD kPa</div></div>
@@ -79,7 +79,7 @@ const S={fan:'<circle cx="12" cy="12" r="2"/><path d="M12 10c0-3 2-6 4.5-5S18 9 
   hum:'<path d="M12 3l5.5 6.5a7.5 7.5 0 1 1-11 0L12 3z"/><path d="M9.5 16c1-1.5 4-1.5 5 0M10.5 13.5c.8-1 2.2-1 3 0"/>'};
 function svgFor(n){if(n.includes('DEHUM'))return S.dehum;if(n.includes('HUMID'))return S.hum;if(n.includes('FAN'))return S.fan;if(n.includes('HEAT'))return S.heat;if(n.includes('LIGHT'))return S.bulb;return '<circle cx="12" cy="12" r="5"/>';}
 function tint(el,v,lo,hi,ok){const n=parseFloat(v);if(isNaN(n))return;const c=n<lo||n>hi?'#F87171':n<lo+.15||n>hi-.15?'#FBBF24':ok;el.style.setProperty('--rc',c);el.style.setProperty('--bs',c===ok?'4s':'1.8s');}
-function dial(id,onM,offM,c){const el=document.getElementById(id);if(!el||onM==null)return;const now=new Date(),cur=now.getHours()*60+now.getMinutes();
+function dial(id,onM,offM,c){const el=document.getElementById(id);if(!el)return;if(onM==null||onM<0||offM<0){el.innerHTML='';return;}const now=new Date(),cur=now.getHours()*60+now.getMinutes();
   const isOn=onM<offM?(cur>=onM&&cur<offM):(cur>=onM||cur<offM);const nxt=isOn?offM:onM;const rem=(nxt-cur+1440)%1440;
   const pt=(m,r)=>{const a=(m/1440)*2*Math.PI-Math.PI/2;return [32+r*Math.cos(a),32+r*Math.sin(a)];};
   const [x1,y1]=pt(onM,27),[x2,y2]=pt(offM,27),[nx,ny]=pt(cur,24);const dur=(offM-onM+1440)%1440;
