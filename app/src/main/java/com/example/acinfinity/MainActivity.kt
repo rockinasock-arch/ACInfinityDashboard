@@ -117,7 +117,8 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     for (po in lightPorts.sortedByDescending { it.optString("portName").contains("on/off", true) }) {
-                        fetchLightSched(devId, po.optInt("port", 1), tk)?.let { lOn = it.first; lOff = it.second; break }
+                        val sc = fetchLightSched(devId, po.optInt("port", 1), tk)
+                        if (sc != null) { lOn = sc.first; lOff = sc.second; break }
                         val sur = po.optInt("surplus", 0)
                         if (sur > 0) { val cal = Calendar.getInstance(); val cur = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE); val nxt = (cur + sur / 60) % 1440; val dur = if (devType == 20) 720 else 1080; if (po.optInt("speak", 0) > 0) { lOff = nxt; lOn = (nxt - dur + 1440) % 1440 } else { lOn = nxt; lOff = (nxt + dur) % 1440 }; break }
                     }
