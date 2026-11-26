@@ -11,28 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate Clean App Code
-        run: |
-          python3 -c '
-          import base64
-          p = "app/src/main"
-          k = p + "/java/com/example/acinfinity"
-          m = (
-            "PG1hbmlmZXN0IHhtbG5zOmFuZHJvaWQ9Imh0dHA6Ly9zY2hlbWFzLmFuZHJvaW"
-            "QuY29tL2Fway9yZXMvYW5kcm9pZCI+PHVzZXMtcGVybWlzc2lvbiBhbmRyb2lk"
-            "Om5hbWU9ImFuZHJvaWQucGVybWlzc2lvbi5JTlRFUk5FVCIvPjxhcHBsaWNhdG"
-            "lvbiBhbmRyb2lkOmxhYmVsPSJBQyBJbmZpbml0eSIgYW5kcm9pZDp1c2VzQ2xl"
-            "YXJ0ZXh0VHJhZmZpYz0idHJ1ZSIgYW5kcm9pZDp0aGVtZT0iQHN0eWxlL1RoZW"
-            "1lLkFwcENvbXBhdC5Ob0FjdGlvbkJhciI+PGFjdGl2aXR5IGFuZHJvaWQ6bmFt"
-            "ZT0iLk1haW5BY3Rpdml0eSIgYW5kcm9pZDpleHBvcnRlZD0idHJ1ZSIgYW5kcm"
-            "9pZDpzY3JlZW5PcmllbnRhdGlvbj0ibGFuZHNjYXBlIj48aW50ZW50LWZpbHRl"
-            "cj48YWN0aW9uIGFuZHJvaWQ6bmFtZT0iYW5kcm9pZC5pbnRlbnQuYWN0aW9uLk"
-            "1BSU4iLz48Y2F0ZWdvcnkgYW5kcm9pZDpuYW1lPSJhbmRyb2lkLmludGVudC5j"
-            "YXRlZ29yeS5MQVVOQ0hFUiIvPjwvaW50ZW50LWZpbHRlcj48L2FjdGl2aXR5Pj"
-            "wvYXBwbGljYXRpb24+PC9tYW5pZmVzdD4="
-          )
-          open(p + "/AndroidManifest.xml", "wb").write(base64.b64decode(m))
-          '
+      - name: Unpack Clean Code
+        run: python3 fix_code.py && python3 fix_code2.py && python3 fix_code3.py && python3 part2.py
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -46,7 +26,7 @@ jobs:
           gradle-version: '8.5'
 
       - name: Build Debug APK
-        run: gradle assembleDebug
+        run: gradle assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
