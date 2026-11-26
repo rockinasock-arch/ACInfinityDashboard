@@ -17,7 +17,7 @@ import java.net.URL
 import java.net.URLEncoder
 import kotlin.concurrent.thread
 
-data class PortData(val id: Int, val name: String, val speed: Int, val loadType: Int, val online: Boolean)
+data class PortData(val id: Int, val name: String, val valueText: String, val isOn: Boolean, val loadType: Int)
 data class ControllerData(
     val id: String, val name: String, val type: Int,
     val tempC: Double, val rh: Double, val vpd: Double,
@@ -73,7 +73,7 @@ class MainActivity : AppCompatActivity() {
     private fun pollLoop() {
         if (!polling) return
         fetchDevices()
-        handler.postDelayed({ pollLoop() }, 20000)
+        handler.postDelayed({ pollLoop() }, 15000)
     }
 
     private fun apiPost(path: String, body: String, tk: String? = null): String {
@@ -94,14 +94,13 @@ class MainActivity : AppCompatActivity() {
             try {
                 val safePass = if (pass.length > 25) pass.substring(0, 25) else pass
                 val raw = apiPost("/api/user/appUserLogin", "appEmail=${URLEncoder.encode(email, "UTF-8")}&appPasswordl=${URLEncoder.encode(safePass, "UTF-8")}")
-                if (!raw.startsWith("{")) { cb(false, "Server reply: ${raw.take(120)}"); return@thread }
                 val res = JSONObject(raw)
                 if (res.optInt("code") == 200) {
                     token = res.getJSONObject("data").getString("appId")
                     getSharedPreferences("aci_prefs", Context.MODE_PRIVATE).edit().putString("token", token).apply()
                     cb(true, "Connected")
                 } else cb(false, "API ${res.optInt("code")}: ${res.optString("msg", raw)}")
-            } catch (e: Exception) { cb(false, "Error: ${e.javaClass.simpleName} - ${e.message}") }
+            } catch (e: Exception) { cb(false, "Error: ${e.message}") }
         }
     }
 
@@ -116,18 +115,47 @@ class MainActivity : AppCompatActivity() {
                 val list = (0 until arr.length()).map { i ->
                     val d = arr.getJSONObject(i)
                     val info = d.optJSONObject("deviceInfo") ?: d
-                    val pArr = info.optJSONArray("ports")
-                    val ports = if (pArr == null) emptyList() else (0 until pArr.length()).map { p ->
-                        val po = pArr.getJSONObject(p)
-                        PortData(po.optInt("port", p + 1), po.optString("portName", "P${p + 1}"), po.optInt("speak", 0), po.optInt("loadType", 1), po.optInt("online", 1) == 1 && po.optInt("loadType", 0) > 0)
-                    }
+                    var temp = info.optDouble("temperature", 2200.0) / 100.0
+                    var rh = info.optDouble("humidity", 5500.0) / 100.0
+                    var vpd = info.optDouble("vpdnums", 100.0) / 100.0
                     var ph: Double? = null; var ec: Double? = null; var wt: Double? = null
+
                     val sArr = info.optJSONArray("sensors")
-                    if (sArr != null) for (s in 0 until sArr.length()) {
-                        val so = sArr.getJSONObject(s)
-                        when (so.optInt("sensorType")) { 11 -> ph = so.optDouble("sensorData") / 100.0; 12 -> ec = so.optDouble("sensorData") / 100.0; 13 -> wt = so.optDouble("sensorData") / 100.0 }
+                    if (sArr != null) {
+                        for (s in 0 until sArr.length()) {
+                            val so = sArr.getJSONObject(s)
+                            val st = so.optInt("sensorType")
+                            val sv = so.optDouble("sensorData") / 100.0
+                            when (st) {
+                                0 -> if (sv > 0) temp = sv
+                                1 -> if (sv > 0) rh = sv
+                                2 -> if (sv > 0) vpd = sv
+                                10, 13 -> if (sv > 0) wt = sv
+                                11 -> if (sv > 0) ph = sv
+                                12 -> if (sv > 0) ec = sv
+                            }
+                        }
                     }
-                    ControllerData(d.optString("devId", "$i"), d.optString("devName", if (d.optInt("devType") == 20) "AI+" else "69 Pro"), d.optInt("devType", 11), info.optDouble("temperature", 2500.0) / 100.0, info.optDouble("humidity", 5500.0) / 100.0, info.optDouble("vpdnums", 120.0) / 100.0, info.optInt("tTrend", 1), info.optInt("hTrend", 1), ph, ec, wt, ports)
+
+                    val pArr = info.optJSONArray("ports")
+                    val ports = mutableListOf<PortData>()
+                    if (pArr != null) {
+                        for (p in 0 until pArr.length()) {
+                            val po = pArr.getJSONObject(p)
+                            val online = po.optInt("online", 0) == 1
+                            if (!online) continue
+                            val speak = po.optInt("speak", 0)
+                            val lt = po.optInt("loadType", 1)
+                            val isOutlet = lt == 4 || lt == 5 || po.optInt("curMode") == 2 && speak == 10
+                            val valTxt = if (isOutlet) (if (speak > 0) "ON" else "OFF") else "$speak"
+                            ports.add(PortData(po.optInt("port", p + 1), po.optString("portName", ""), valTxt, speak > 0, lt))
+                        }
+                    }
+
+                    ControllerData(
+                        d.optString("devId", "$i"), d.optString("devName", "Controller"), d.optInt("devType", 11),
+                        temp, rh, vpd, info.optInt("tTrend", 0), info.optInt("hTrend", 0), ph, ec, wt, ports
+                    )
                 }
                 handler.post { dashboardView.updateData(list.sortedByDescending { it.type == 20 }) }
             } catch (_: Exception) {}
