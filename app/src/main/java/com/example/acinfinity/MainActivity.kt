@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONObject
 import java.net.*
 import kotlin.concurrent.thread
+import kotlin.math.exp
 
 data class PortData(val id: Int, val name: String, val valueText: String, val isOn: Boolean, val loadType: Int)
 data class ControllerData(val id: String, val name: String, val type: Int, val tempC: Double, val rh: Double, val vpd: Double, val tempTrend: Int, val rhTrend: Int, val ph: Double?, val ec: Double?, val waterTempC: Double?, val ports: List<PortData>)
@@ -82,21 +83,38 @@ class MainActivity : AppCompatActivity() {
                 val arr = res.getJSONArray("data"); val list = mutableListOf<ControllerData>()
                 for (i in 0 until arr.length()) {
                     val d = arr.getJSONObject(i); val info = d.optJSONObject("deviceInfo") ?: d
-                    var temp = info.optDouble("temperature", 2200.0) / 100.0; var rh = info.optDouble("humidity", 5500.0) / 100.0; var vpd = info.optDouble("vpdnums", 100.0) / 100.0
+                    val devType = d.optInt("devType", 11)
+                    var temp = info.optDouble("temperature", 2200.0) / 100.0
+                    var rh = info.optDouble("humidity", 5500.0) / 100.0
+                    var vpd = info.optDouble("vpdnums", 100.0) / 100.0
                     var ph: Double? = null; var ec: Double? = null; var wt: Double? = null
                     val sArr = info.optJSONArray("sensors")
-                    if (sArr != null) for (s in 0 until sArr.length()) {
-                        val so = sArr.getJSONObject(s); val sv = so.optDouble("sensorData") / 100.0
-                        when (so.optInt("sensorType")) { 0 -> if (sv > 0) temp = sv; 1 -> if (sv > 0) rh = sv; 2 -> if (sv > 0) vpd = sv; 10, 13 -> if (sv > 0) wt = sv; 11 -> if (sv > 0) ph = sv; 12 -> if (sv > 0) ec = sv }
+                    if (sArr != null) {
+                        var hasInsideVpd = false
+                        for (s in 0 until sArr.length()) {
+                            val so = sArr.getJSONObject(s); val st = so.optInt("sensorType"); val sv = so.optDouble("sensorData") / 100.0
+                            when (st) {
+                                1 -> if (sv > 0) temp = sv
+                                2 -> if (sv > 0) rh = sv
+                                3 -> if (sv > 0) { vpd = sv; hasInsideVpd = true }
+                                10 -> if (sv > 0) ph = sv
+                                11 -> if (sv > 0) ec = sv
+                                12, 13 -> if (sv > 0) wt = sv
+                            }
+                        }
+                        if (devType == 20 && !hasInsideVpd) {
+                            val svp = 0.61078 * exp((17.27 * temp) / (temp + 237.3))
+                            vpd = svp * (1.0 - rh / 100.0)
+                        }
                     }
                     val pArr = info.optJSONArray("ports"); val ports = mutableListOf<PortData>()
                     if (pArr != null) for (p in 0 until pArr.length()) {
                         val po = pArr.getJSONObject(p); if (po.optInt("online", 0) != 1) continue
                         val speak = po.optInt("speak", 0); val lt = po.optInt("loadType", 1)
-                        val isOut = lt == 4 || lt == 5 || (po.optInt("curMode") == 2 && speak == 10)
+                        val isOut = lt == 4 || lt == 5 || lt == 6 || po.optString("portName").lowercase().let { it.contains("dehum") || it.contains("on/off") }
                         ports.add(PortData(po.optInt("port", p + 1), po.optString("portName", ""), if (isOut) (if (speak > 0) "ON" else "OFF") else "$speak", speak > 0, lt))
                     }
-                    list.add(ControllerData(d.optString("devId", "$i"), d.optString("devName", "Controller"), d.optInt("devType", 11), temp, rh, vpd, info.optInt("tTrend", 0), info.optInt("hTrend", 0), ph, ec, wt, ports))
+                    list.add(ControllerData(d.optString("devId", "$i"), d.optString("devName", "Controller"), devType, temp, rh, vpd, info.optInt("tTrend", 0), info.optInt("hTrend", 0), ph, ec, wt, ports))
                 }
                 val sorted = list.sortedByDescending { it.type == 20 }
                 handler.post { dashboardView.updateData(sorted) }
