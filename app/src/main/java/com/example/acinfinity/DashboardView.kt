@@ -1,85 +1,93 @@
 package com.example.acinfinity
 
-import android.animation.ValueAnimator
 import android.content.Context
-import android.graphics.*
-import android.view.*
-import android.view.animation.LinearInterpolator
-import kotlin.math.*
+import android.graphics.Color
+import android.view.MotionEvent
+import android.webkit.WebView
+import org.json.JSONArray
+import org.json.JSONObject
 
-class DashboardView(context: Context, private val onLogout: () -> Unit) : View(context) {
-    private var controllers: List<ControllerData> = emptyList()
-    private var animPhase = 0f; private var dotTaps = 0; private var lastTapMs = 0L
-    private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#08090D") }
-    private val cardPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#10131A") }
-    private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 2.5f; color = Color.parseColor("#831843") }
-    private val pillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#161B26") }
-    private val ringBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 20f; color = Color.parseColor("#1E2430") }
-    private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeWidth = 20f; color = Color.parseColor("#F43F85") }
-    private val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val portRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 4.5f }
-    private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeWidth = 4f }
-    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; typeface = Typeface.create("sans-serif-medium", Typeface.BOLD) }
-    private val numPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; typeface = Typeface.create("sans-serif-light", Typeface.NORMAL) }
-    private val subPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#64748B"); typeface = Typeface.create("sans-serif-medium", Typeface.BOLD) }
-    private val animator = ValueAnimator.ofFloat(0f, 360f).apply { duration = 6000L; repeatCount = ValueAnimator.INFINITE; interpolator = LinearInterpolator(); addUpdateListener { animPhase = it.animatedValue as Float; invalidate() } }
+class DashboardView(context: Context, private val onLogout: () -> Unit) : WebView(context) {
+    private var dotTaps = 0; private var lastTapMs = 0L
 
-    init { animator.start() }
-    fun updateData(list: List<ControllerData>) { controllers = list; invalidate() }
+    init {
+        setBackgroundColor(Color.parseColor("#0B0D11"))
+        settings.javaScriptEnabled = true
+        loadDataWithBaseURL(null, htmlPage(), "text/html", "UTF-8", null)
+    }
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
         if (e.action == MotionEvent.ACTION_DOWN && e.x < width * 0.15f && e.y < height * 0.20f) {
-            val now = System.currentTimeMillis(); dotTaps = if (now - lastTapMs < 1500L) dotTaps + 1 else 1; lastTapMs = now
+            val now = System.currentTimeMillis()
+            dotTaps = if (now - lastTapMs < 1500L) dotTaps + 1 else 1
+            lastTapMs = now
             if (dotTaps >= 7) { dotTaps = 0; onLogout() }
         }
-        return true
+        return super.onTouchEvent(e)
     }
 
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas); val w = width.toFloat(); val h = height.toFloat()
-        canvas.drawRect(0f, 0f, w, h, bgPaint)
-        if (controllers.isEmpty()) { textPaint.textSize = h * 0.045f; textPaint.textAlign = Paint.Align.CENTER; canvas.drawText("Syncing AC Infinity Cloud...", w / 2f, h / 2f, textPaint); return }
-        val pad = w * 0.018f; val count = min(2, controllers.size); val cardW = (w - pad * (count + 1)) / count
-        for (i in 0 until count) drawCard(canvas, controllers[i], pad + i * (cardW + pad), pad, cardW, h - pad * 2)
+    fun updateData(list: List<ControllerData>) {
+        val arr = JSONArray()
+        for (c in list) {
+            val ports = JSONArray()
+            for (p in c.ports) ports.put(JSONObject().put("name", p.name).put("val", p.valueText).put("on", p.isOn))
+            arr.put(JSONObject().put("name", c.name).put("type", c.type).put("temp", c.tempC).put("rh", c.rh).put("vpd", c.vpd).put("tt", c.tempTrend).put("ht", c.rhTrend).put("ph", c.ph ?: -1).put("ec", c.ec ?: -1).put("wt", c.waterTempC ?: -1).put("ports", ports))
+        }
+        post { evaluateJavascript("window.renderData && renderData($arr);", null) }
     }
 
-    private fun drawCard(canvas: Canvas, c: ControllerData, x: Float, y: Float, w: Float, h: Float) {
-        val rect = RectF(x, y, x + w, y + h); canvas.drawRoundRect(rect, 36f, 36f, cardPaint); canvas.drawRoundRect(rect, 36f, 36f, borderPaint)
-        val pulse = 0.6f + 0.4f * sin(Math.toRadians(animPhase.toDouble() * 2)).toFloat()
-        canvas.drawCircle(x + w * 0.06f, y + h * 0.085f, h * 0.014f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#10B981"); alpha = (pulse * 255).toInt() })
-        textPaint.textAlign = Paint.Align.LEFT; textPaint.textSize = h * 0.048f; canvas.drawText(c.name.uppercase(), x + w * 0.095f, y + h * 0.102f, textPaint)
-        val bR = h * 0.028f; val bBg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#064E3B") }; val bRing = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 2.5f; color = Color.parseColor("#10B981") }; val bTxt = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#34D399"); textSize = bR * 0.85f; textAlign = Paint.Align.CENTER; typeface = Typeface.DEFAULT_BOLD }
-        canvas.drawCircle(x + w * 0.84f, y + h * 0.085f, bR, bBg); canvas.drawCircle(x + w * 0.84f, y + h * 0.085f, bR, bRing); canvas.drawText(if (c.type == 20) "AI" else "69", x + w * 0.84f, y + h * 0.085f + bR * 0.32f, bTxt)
-        canvas.drawCircle(x + w * 0.92f, y + h * 0.085f, bR, bBg); canvas.drawCircle(x + w * 0.92f, y + h * 0.085f, bR, bRing); canvas.drawText("✓", x + w * 0.92f, y + h * 0.085f + bR * 0.34f, bTxt)
-        val cx = x + w * 0.50f; val cy = y + h * 0.38f; val r = min(w * 0.165f, h * 0.185f)
-        glowPaint.shader = RadialGradient(cx, cy, r * 1.35f, Color.parseColor("#33F43F85"), Color.TRANSPARENT, Shader.TileMode.CLAMP); canvas.drawCircle(cx, cy, r * 1.35f, glowPaint)
-        val oval = RectF(cx - r, cy - r, cx + r, cy + r); canvas.drawArc(oval, 0f, 360f, false, ringBgPaint); canvas.drawArc(oval, -90f, ((c.vpd / 2.2).coerceIn(0.05, 1.0) * 360.0).toFloat(), false, ringPaint)
-        numPaint.textAlign = Paint.Align.CENTER; numPaint.textSize = r * 0.62f; canvas.drawText(String.format("%.2f", c.vpd), cx, cy + r * 0.16f, numPaint)
-        subPaint.textAlign = Paint.Align.CENTER; subPaint.textSize = r * 0.22f; canvas.drawText("VPD kPa", cx, cy + r * 0.50f, subPaint)
-        numPaint.textSize = h * 0.076f; subPaint.textSize = h * 0.028f
-        canvas.drawText(String.format("%.1f°%s", c.tempC, if (c.tempTrend > 0) "↑" else if (c.tempTrend < 0) "↓" else ""), x + w * 0.175f, cy + h * 0.02f, numPaint); canvas.drawText("TEMP °C", x + w * 0.175f, cy + h * 0.072f, subPaint)
-        canvas.drawText(String.format("%.1f%%%s", c.rh, if (c.rhTrend > 0) "↑" else if (c.rhTrend < 0) "↓" else ""), x + w * 0.825f, cy + h * 0.02f, numPaint); canvas.drawText("HUMIDITY", x + w * 0.825f, cy + h * 0.072f, subPaint)
-        if (c.ph != null || c.ec != null || c.waterTempC != null) {
-            canvas.drawRoundRect(RectF(x + w * 0.08f, y + h * 0.605f, x + w * 0.92f, y + h * 0.695f), 26f, 26f, pillPaint)
-            textPaint.textAlign = Paint.Align.CENTER; textPaint.textSize = h * 0.032f
-            canvas.drawText("${c.ph?.let { String.format("pH %.1f", it) } ?: "pH --"}   •   ${c.ec?.let { String.format("EC %.2f", it) } ?: "EC --"}   •   ${c.waterTempC?.let { String.format("H2O %.1f°", it) } ?: "H2O --"}", cx, y + h * 0.662f, textPaint)
-        }
-        val step = (w * 0.88f) / c.ports.size.coerceAtLeast(1); val pR = min(step * 0.36f, h * 0.084f); val py = y + h * 0.84f
-        for (idx in c.ports.indices) {
-            val port = c.ports[idx]; val px = x + w * 0.06f + step * (idx + 0.5f)
-            portRingPaint.color = if (port.isOn) Color.parseColor("#14B8A6") else Color.parseColor("#334155"); iconPaint.color = if (port.isOn) Color.parseColor("#2DD4BF") else Color.parseColor("#64748B")
-            canvas.drawCircle(px, py, pR, pillPaint); canvas.drawCircle(px, py, pR, portRingPaint); drawDeviceIcon(canvas, port, px, py - pR * 0.32f, pR * 0.26f)
-            textPaint.textAlign = Paint.Align.CENTER; textPaint.textSize = if (port.valueText.length > 1) pR * 0.46f else pR * 0.64f; canvas.drawText(port.valueText, px, py + pR * 0.54f, textPaint)
-        }
-    }
-
-    private fun drawDeviceIcon(canvas: Canvas, p: PortData, cx: Float, cy: Float, r: Float) {
-        val n = p.name.lowercase()
-        when {
-            n.contains("fan") -> { val rot = if (p.isOn) animPhase * 2f else 0f; for (b in 0..2) { val rad = Math.toRadians((rot + b * 120).toDouble()); canvas.drawLine(cx, cy, cx + cos(rad).toFloat() * r, cy + sin(rad).toFloat() * r, iconPaint) } }
-            n.contains("light") -> { canvas.drawCircle(cx, cy, r * 0.44f, iconPaint); for (b in 0..5) { val rad = Math.toRadians((b * 60).toDouble()); canvas.drawLine(cx + cos(rad).toFloat() * r * 0.66f, cy + sin(rad).toFloat() * r * 0.66f, cx + cos(rad).toFloat() * r, cy + sin(rad).toFloat() * r, iconPaint) } }
-            n.contains("heat") -> canvas.drawPath(Path().apply { moveTo(cx, cy - r); quadTo(cx + r, cy, cx, cy + r); quadTo(cx - r, cy, cx, cy - r) }, iconPaint)
-            else -> canvas.drawPath(Path().apply { moveTo(cx, cy - r); lineTo(cx + r * 0.72f, cy + r * 0.35f); arcTo(RectF(cx - r * 0.72f, cy - r * 0.3f, cx + r * 0.72f, cy + r), 0f, 180f); close() }, iconPaint)
-        }
-    }
+    private fun htmlPage() = """
+<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;user-select:none}
+body{background:#0B0D11;color:#F8FAFC;height:100vh;width:100vw;overflow:hidden;display:flex;gap:1.4vw;padding:1.4vh 1.4vw}
+.card{flex:1;background:linear-gradient(165deg,#13161E 0%,#0E1016 100%);border:1px solid rgba(255,255,255,.08);border-radius:28px;padding:1.6vh 1.6vw;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 16px 40px rgba(0,0,0,.6)}
+.hdr{display:flex;align-items:center;justify-content:space-between}
+.title{display:flex;align-items:center;gap:10px;font-size:clamp(18px,2.2vw,26px);font-weight:700;letter-spacing:.08em}
+.dot{width:10px;height:10px;border-radius:50%;background:#10B981;box-shadow:0 0 12px #10B981;animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.85)}}
+.meta{display:flex;align-items:center;gap:12px;font-size:clamp(12px,1.2vw,15px);color:#64748B;font-weight:600}
+.badge{padding:3px 10px;border-radius:99px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.45);color:#10B981;font-size:12px;font-weight:800}
+.rings{display:flex;align-items:center;justify-content:space-between;gap:.8vw;margin:auto 0}
+.dial{position:relative;border-radius:50%;background:radial-gradient(circle at 50% 35%,#191E29,#0F1218);box-shadow:inset 0 2px 8px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.06);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.dial.sm{width:clamp(125px,14.2vw,195px);height:clamp(125px,14.2vw,195px)}
+.dial.lg{width:clamp(150px,17.2vw,235px);height:clamp(150px,17.2vw,235px);box-shadow:inset 0 2px 10px rgba(0,0,0,.75),0 0 28px rgba(16,185,129,.12)}
+.dial svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.num{font-size:clamp(28px,3.8vw,52px);font-weight:700;letter-spacing:-.03em;line-height:1}
+.lg .num{font-size:clamp(34px,4.5vw,62px)}
+.sub{font-size:clamp(10px,1vw,13px);font-weight:700;color:#64748B;letter-spacing:.12em;margin-top:4px}
+.up{color:#10B981;font-size:.65em}.dn{color:#38BDF8;font-size:.65em}
+.hydro{display:flex;justify-content:center;gap:1.4vw;margin-top:-1vh}
+.horb{width:clamp(74px,8.2vw,108px);height:clamp(74px,8.2vw,108px);border-radius:50%;background:#141822;border:1px solid rgba(16,185,129,.28);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:inset 0 2px 6px rgba(0,0,0,.6)}
+.hval{font-size:clamp(18px,2.2vw,28px);font-weight:700;color:#F8FAFC;line-height:1.05}
+.hlbl{font-size:clamp(9px,.95vw,11px);font-weight:700;color:#64748B;letter-spacing:.1em;margin-top:2px}
+.ports{display:flex;justify-content:center;gap:1.3vw;padding-top:.4vh}
+.port{width:clamp(76px,8.6vw,114px);height:clamp(76px,8.6vw,114px);border-radius:50%;background:#12161F;border:2px solid #222938;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:.3s}
+.port.on{border-color:#10B981;background:radial-gradient(circle at 50% 30%,rgba(16,185,129,.16),#12161F 70%);box-shadow:0 0 20px rgba(16,185,129,.18)}
+.port svg{width:28%;height:28%;stroke:#64748B;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.port.on svg{stroke:#10B981}
+.port.on.fan svg{animation:spin 2s linear infinite}
+@keyframes spin{100%{transform:rotate(360deg)}}
+.pval{font-size:clamp(20px,2.5vw,32px);font-weight:700;line-height:1}
+.plbl{font-size:clamp(8px,.85vw,10px);font-weight:700;color:#64748B;letter-spacing:.08em;max-width:82%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sync{margin:auto;color:#64748B;font-size:20px;letter-spacing:.1em}
+</style></head><body id="app"><div class="sync">SYNCING AC INFINITY CLOUD...</div>
+<script>
+function ico(n){n=n.toLowerCase();
+if(n.includes('fan'))return'<svg viewBox="0 0 24 24"><path d="M12 12c0-3 2.5-5 5-5 2 0 3 1.5 3 3 0 2-2 2-8 2zm0 0c3 0 5 2.5 5 5 0 2-1.5 3-3 3-2 0-2-2-2-8zm0 0c0 3-2.5 5-5 5-2 0-3-1.5-3-3 0-2 2-2 8-2zm0 0c-3 0-5-2.5-5-5 0-2 1.5-3 3-3 2 0 2 2 2 8z"/></svg>';
+if(n.includes('light'))return'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/></svg>';
+if(n.includes('heat'))return'<svg viewBox="0 0 24 24"><path d="M12 2c.5 4-2 6-2 10a4 4 0 0 0 8 0c0-3-2-5-2-8 2 1.5 4 4.5 4 8a8 8 0 1 1-16 0c0-4.5 3.5-7.5 8-10z"/></svg>';
+return'<svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>';}
+function ring(pct,col){const d=289,o=d-(d*Math.min(1,Math.max(.04,pct)));return'<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" stroke="#1C222E" stroke-width="5" fill="none"/><circle cx="50" cy="50" r="46" stroke="'+col+'" stroke-width="5" stroke-linecap="round" fill="none" stroke-dasharray="'+d+'" stroke-dashoffset="'+o+'"/></svg>';}
+function renderData(list){if(!list||!list.length)return;
+const clk=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+document.getElementById('app').innerHTML=list.slice(0,2).map((c,idx)=>{
+const ta=c.tt>0?'<span class="up">↑</span>':c.tt<0?'<span class="dn">↓</span>':'';
+const ha=c.ht>0?'<span class="up">↑</span>':c.ht<0?'<span class="dn">↓</span>':'';
+const hy=(c.ph>=0||c.ec>=0||c.wt>=0)?'<div class="hydro"><div class="horb"><div class="hval">'+(c.ph>=0?c.ph.toFixed(1):'--')+'</div><div class="hlbl">pH</div></div><div class="horb"><div class="hval">'+(c.ec>=0?c.ec.toFixed(2):'--')+'</div><div class="hlbl">EC mS</div></div><div class="horb"><div class="hval">'+(c.wt>=0?c.wt.toFixed(1)+'°':'--')+'</div><div class="hlbl">TEMP °C</div></div></div>':'';
+const ps=c.ports.map(p=>'<div class="port '+(p.on?'on ':'')+(p.name.toLowerCase().includes('fan')?'fan':'')+'">'+ico(p.name)+'<div class="pval">'+p.val+'</div><div class="plbl">'+(p.name||'PORT').toUpperCase()+'</div></div>').join('');
+return'<div class="card"><div class="hdr"><div class="title"><div class="dot"></div>'+c.name.toUpperCase()+'</div><div class="meta">'+(idx===1?'<span>'+clk+'</span>':'')+'<span class="badge">'+(c.type==20?'AI+':'69 PRO')+'</span></div></div><div class="rings"><div class="dial sm">'+ring(c.temp/40,'#10B981')+'<div class="num">'+c.temp.toFixed(1)+'°'+ta+'</div><div class="sub">TEMP °C</div></div><div class="dial lg">'+ring(c.vpd/2.2,'#10B981')+'<div class="num">'+c.vpd.toFixed(2)+'</div><div class="sub">VPD kPa</div></div><div class="dial sm">'+ring(c.rh/100,'#10B981')+'<div class="num">'+c.rh.toFixed(0)+'%'+ha+'</div><div class="sub">HUMIDITY</div></div></div>'+hy+'<div class="ports">'+ps+'</div></div>';
+}).join('');}
+</script></body></html>
+    """.trimIndent()
 }
