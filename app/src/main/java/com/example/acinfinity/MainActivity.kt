@@ -9,6 +9,7 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONObject
 import java.net.*
+import java.util.Calendar
 import kotlin.concurrent.thread
 import kotlin.math.exp
 
@@ -58,20 +59,17 @@ class MainActivity : AppCompatActivity() {
         return (if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText().trim()
     }
 
-    private fun parseSched(o: JSONObject?): Pair<Int, Int>? {
-        if (o == null) return null
-        val sub = o.optJSONObject("devSetting") ?: o
-        val st = sub.optInt("schedStartTime", sub.optInt("onTime", -1))
-        val et = sub.optInt("schedEndtTime", sub.optInt("schedEndTime", sub.optInt("offTime", -1)))
-        return if (st in 0..1439 && et in 0..1439 && st != et) st to et else null
-    }
-
     private fun fetchLightSched(devId: String, port: Int, tk: String): Pair<Int, Int>? {
         return try {
             val res = JSONObject(apiPost("/api/dev/getdevModeSettingList", "devId=$devId&port=$port", tk, true))
             val d = res.optJSONObject("data"); val a = res.optJSONArray("data")
-            val list = if (a != null) (0 until a.length()).mapNotNull { a.optJSONObject(it) } else listOfNotNull(d)
-            list.firstOrNull { it.optInt("atType") in listOf(6, 7) }?.let { parseSched(it) } ?: list.firstNotNullOfOrNull { parseSched(it) }
+            val items = if (a != null) (0 until a.length()).mapNotNull { a.optJSONObject(it) } else listOfNotNull(d)
+            for (o in items) {
+                val sub = o.optJSONObject("devSetting") ?: o
+                val st = sub.optInt("schedStartTime", sub.optInt("onTime", -1))
+                val et = sub.optInt("schedEndtTime", sub.optInt("schedEndTime", sub.optInt("offTime", -1)))
+                if (st in 0..1439 && et in 0..1439 && st != et) return st to et
+            }; null
         } catch (_: Exception) { null }
     }
 
@@ -99,7 +97,7 @@ class MainActivity : AppCompatActivity() {
                 for (i in 0 until arr.length()) {
                     val d = arr.getJSONObject(i); val devId = d.optString("devId", "$i"); val info = d.optJSONObject("deviceInfo") ?: d; val devType = d.optInt("devType", 11)
                     var temp = info.optDouble("temperature", 2200.0) / 100.0; var rh = info.optDouble("humidity", 5500.0) / 100.0; var vpd = info.optDouble("vpdnums", 100.0) / 100.0
-                    var ph: Double? = null; var ec: Double? = null; var wt: Double? = null; var lOn = -1; var lOff = -1; val schedPorts = mutableListOf<JSONObject>()
+                    var ph: Double? = null; var ec: Double? = null; var wt: Double? = null; var lOn = -1; var lOff = -1
                     info.optJSONArray("sensors")?.let { sArr ->
                         var hasVpd = false
                         for (s in 0 until sArr.length()) {
@@ -108,18 +106,21 @@ class MainActivity : AppCompatActivity() {
                         }
                         if (devType == 20 && !hasVpd) vpd = (0.61078 * exp((17.27 * temp) / (temp + 237.3))) * (1.0 - rh / 100.0)
                     }
-                    val ports = mutableListOf<PortData>()
+                    val ports = mutableListOf<PortData>(); val lightPorts = mutableListOf<JSONObject>()
                     info.optJSONArray("ports")?.let { pArr ->
                         for (p in 0 until pArr.length()) {
                             val po = pArr.getJSONObject(p); if (po.optInt("online", 0) != 1) continue
                             val portNum = po.optInt("port", p + 1); val speak = po.optInt("speak", 0); val lt = po.optInt("loadType", 1); val pName = po.optString("portName", "")
-                            if (pName.contains("light", true) || lt == 2 || po.optInt("curMode") == 7 || po.optInt("modeType") == 7) schedPorts.add(po)
+                            if (pName.contains("light", true) || lt == 2) lightPorts.add(po)
                             val isOut = lt in 4..6 || pName.lowercase().let { it.contains("dehum") || it.contains("on/off") }
                             ports.add(PortData(portNum, pName, if (isOut) (if (speak > 0) "ON" else "OFF") else "$speak", speak > 0, lt))
                         }
                     }
-                    schedPorts.sortedByDescending { (if (it.optString("portName").contains("on/off", true)) 2 else 0) + (if (it.optInt("curMode") == 7 || it.optInt("modeType") == 7) 1 else 0) }
-                        .firstNotNullOfOrNull { po -> parseSched(po) ?: fetchLightSched(devId, po.optInt("port", 1), tk) }?.let { lOn = it.first; lOff = it.second }
+                    for (po in lightPorts.sortedByDescending { it.optString("portName").contains("on/off", true) }) {
+                        fetchLightSched(devId, po.optInt("port", 1), tk)?.let { lOn = it.first; lOff = it.second; break }
+                        val sur = po.optInt("surplus", 0)
+                        if (sur > 0) { val cal = Calendar.getInstance(); val cur = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE); val nxt = (cur + sur / 60) % 1440; val dur = if (devType == 20) 720 else 1080; if (po.optInt("speak", 0) > 0) { lOff = nxt; lOn = (nxt - dur + 1440) % 1440 } else { lOn = nxt; lOff = (nxt + dur) % 1440 }; break }
+                    }
                     list.add(ControllerData(devId, d.optString("devName", "Controller"), devType, temp, rh, vpd, ph, ec, wt, lOn, lOff, ports))
                 }
                 val sorted = list.sortedByDescending { it.type == 20 }; handler.post { dashboardView.updateData(sorted) }
