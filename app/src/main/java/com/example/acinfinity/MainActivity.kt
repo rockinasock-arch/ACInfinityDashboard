@@ -51,7 +51,7 @@ class MainActivity : AppCompatActivity() {
         val conn = (URL("http", listOf("www", "acinfinityserver", "com").joinToString("."), path).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"; doOutput = true; connectTimeout = 10000; readTimeout = 10000
             setRequestProperty("Content-Type", "application/x-www-form-urlencoded"); setRequestProperty("User-Agent", "ACInfinity/1.9.7 (Android)")
-            if (tk != null) setRequestProperty("token", tk)
+            if (tk != null) { setRequestProperty("token", tk); setRequestProperty("phoneType", "1"); setRequestProperty("appVersion", "1.9.7") }
         }
         conn.outputStream.use { it.write(body.toByteArray()) }
         return (if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText().trim()
@@ -62,7 +62,7 @@ class MainActivity : AppCompatActivity() {
             val res = JSONObject(apiPost("/api/dev/getdevModeSettingList", "devId=$devId&port=$port", tk))
             val d = res.optJSONObject("data"); val a = res.optJSONArray("data")
             val items = if (a != null) (0 until a.length()).mapNotNull { a.optJSONObject(it) } else listOfNotNull(d)
-            for (o in items) {
+            for (o in items.sortedByDescending { it.optInt("atType") == 7 }) {
                 val sub = o.optJSONObject("devSetting") ?: o
                 val st = sub.optInt("schedStartTime", sub.optInt("onTime", -1))
                 val et = sub.optInt("schedEndtTime", sub.optInt("schedEndTime", sub.optInt("offTime", -1)))
