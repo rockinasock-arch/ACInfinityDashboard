@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Unpack Code
-        run: python3 unpack.py
+        run: python3 part1.py && python3 part2.py
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
