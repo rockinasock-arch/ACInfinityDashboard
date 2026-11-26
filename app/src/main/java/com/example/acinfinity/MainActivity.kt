@@ -51,11 +51,17 @@ class MainActivity : AppCompatActivity() {
         val conn = (URL("http", listOf("www", "acinfinityserver", "com").joinToString("."), path).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"; doOutput = true; connectTimeout = 10000; readTimeout = 10000
             setRequestProperty("Content-Type", "application/x-www-form-urlencoded"); setRequestProperty("User-Agent", "ACInfinity/1.9.7 (Android)")
-            if (tk != null) setRequestProperty("token", tk)
+            if (tk != null) { setRequestProperty("token", tk); setRequestProperty("phoneType", "1"); setRequestProperty("appVersion", "1.9.7") }
         }
         conn.outputStream.use { it.write(body.toByteArray()) }
         return (if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText().trim()
     }
+
+    private fun fetchLightSched(devId: String, port: Int, tk: String): Pair<Int, Int>? = try {
+        val data = JSONObject(apiPost("/api/dev/getdevModeSettingList", "devId=$devId&port=$port", tk)).optJSONObject("data") ?: return null
+        val st = data.optInt("schedStartTime", data.optInt("onTime", -1)); val et = data.optInt("schedEndTime", data.optInt("offTime", -1))
+        if (st in 0..1439 && et in 0..1439 && st != et) st to et else null
+    } catch (_: Exception) { null }
 
     private fun login(email: String, pass: String, cb: (Boolean, String) -> Unit) {
         thread {
@@ -79,9 +85,9 @@ class MainActivity : AppCompatActivity() {
                 if (res.optInt("code") != 200) { val e = prefs.getString("email", null); val p = prefs.getString("pass", null); if (e != null && p != null) login(e, p) { _, _ -> }; return@thread }
                 val arr = res.getJSONArray("data"); val list = mutableListOf<ControllerData>()
                 for (i in 0 until arr.length()) {
-                    val d = arr.getJSONObject(i); val info = d.optJSONObject("deviceInfo") ?: d; val devType = d.optInt("devType", 11)
+                    val d = arr.getJSONObject(i); val devId = d.optString("devId", "$i"); val info = d.optJSONObject("deviceInfo") ?: d; val devType = d.optInt("devType", 11)
                     var temp = info.optDouble("temperature", 2200.0) / 100.0; var rh = info.optDouble("humidity", 5500.0) / 100.0; var vpd = info.optDouble("vpdnums", 100.0) / 100.0
-                    var ph: Double? = null; var ec: Double? = null; var wt: Double? = null; var lOn = if (devType == 20) 540 else 900; var lOff = if (devType == 20) 1260 else 540
+                    var ph: Double? = null; var ec: Double? = null; var wt: Double? = null; var lOn = -1; var lOff = -1
                     info.optJSONArray("sensors")?.let { sArr ->
                         var hasVpd = false
                         for (s in 0 until sArr.length()) {
@@ -94,16 +100,13 @@ class MainActivity : AppCompatActivity() {
                     info.optJSONArray("ports")?.let { pArr ->
                         for (p in 0 until pArr.length()) {
                             val po = pArr.getJSONObject(p); if (po.optInt("online", 0) != 1) continue
-                            val speak = po.optInt("speak", 0); val lt = po.optInt("loadType", 1); val pName = po.optString("portName", "")
-                            if (pName.contains("light", true) || lt == 2) {
-                                val st = po.optInt("schedStartTime", po.optInt("onTime", -1)); val et = po.optInt("schedEndTime", po.optInt("offTime", -1))
-                                if (st in 0..1439 && et in 0..1439 && st != et) { lOn = st; lOff = et }
-                            }
+                            val portNum = po.optInt("port", p + 1); val speak = po.optInt("speak", 0); val lt = po.optInt("loadType", 1); val pName = po.optString("portName", "")
+                            if (lOn < 0 && (pName.contains("light", true) || lt == 2)) fetchLightSched(devId, portNum, tk)?.let { lOn = it.first; lOff = it.second }
                             val isOut = lt in 4..6 || pName.lowercase().let { it.contains("dehum") || it.contains("on/off") }
-                            ports.add(PortData(po.optInt("port", p + 1), pName, if (isOut) (if (speak > 0) "ON" else "OFF") else "$speak", speak > 0, lt))
+                            ports.add(PortData(portNum, pName, if (isOut) (if (speak > 0) "ON" else "OFF") else "$speak", speak > 0, lt))
                         }
                     }
-                    list.add(ControllerData(d.optString("devId", "$i"), d.optString("devName", "Controller"), devType, temp, rh, vpd, ph, ec, wt, lOn, lOff, ports))
+                    list.add(ControllerData(devId, d.optString("devName", "Controller"), devType, temp, rh, vpd, ph, ec, wt, lOn, lOff, ports))
                 }
                 val sorted = list.sortedByDescending { it.type == 20 }; handler.post { dashboardView.updateData(sorted) }
             } catch (_: Exception) {}
