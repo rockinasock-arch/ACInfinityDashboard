@@ -78,8 +78,8 @@ const S={fan:'<circle cx="12" cy="12" r="2"/><path d="M12 10c0-3 2-6 4.5-5S18 9 
   hum:'<path d="M12 3l5.5 6.5a7.5 7.5 0 1 1-11 0L12 3z"/><path d="M9.5 16c1-1.5 4-1.5 5 0M10.5 13.5c.8-1 2.2-1 3 0"/>'};
 function svgFor(n){if(n.includes('DEHUM'))return S.dehum;if(n.includes('HUMID'))return S.hum;if(n.includes('FAN'))return S.fan;if(n.includes('HEAT'))return S.heat;if(n.includes('LIGHT'))return S.bulb;return '<circle cx="12" cy="12" r="5"/>';}
 function tint(el,v,lo,hi,ok){const n=parseFloat(v);if(isNaN(n))return;const c=n<lo||n>hi?'#F87171':n<lo+.15||n>hi-.15?'#FBBF24':ok;el.style.setProperty('--rc',c);el.style.setProperty('--bs',c===ok?'4s':'1.8s');}
-function ports(id,list){document.getElementById(id).innerHTML=list.map(p=>{const sp=p.n.includes('FAN')&&+p.v>0?`spin" style="--spd:${Math.max(.3,2.2-p.v*.18)}s`:'';
-  return `<div class="pt ${p.on?'on':''}"><div class="pval">${p.v}</div><div class="pcirc"><svg class="${sp}" viewBox="0 0 24 24">${svgFor(p.n)}</svg></div><div style="margin-top:4px">${p.n}</div></div>`;}).join('');}
+function ports(id,list){document.getElementById(id).innerHTML=list.map(p=>{const sp=p.n.includes('FAN')&&+p.v>0?'spin" style="--spd:'+Math.max(.3,2.2-p.v*.18)+'s':'';
+  return '<div class="pt '+(p.on?'on':'')+'"><div class="pval">'+p.v+'</div><div class="pcirc"><svg class="'+sp+'" viewBox="0 0 24 24">'+svgFor(p.n)+'</svg></div><div style="margin-top:4px">'+p.n+'</div></div>';}).join('');}
 function render(d){document.getElementById('clk').textContent=new Date().toTimeString().slice(0,5);
   [['f','#34D399',18,28,1.0,1.5,40,65],['v','#60A5FA',20,30,0.8,1.2,55,78]].forEach(([k,ok,t1,t2,v1,v2,h1,h2])=>{if(!d[k])return;
     document.getElementById(k+'t').textContent=d[k].t;document.getElementById(k+'v').textContent=d[k].v;document.getElementById(k+'h').textContent=d[k].h;
