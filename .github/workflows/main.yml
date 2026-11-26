@@ -11,6 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Write Clean Manifest
+        run: python3 -c 's="<manifest xmlnsQandroid=\"httpQ//://android.com\"><uses-permission androidQname=\"android.permission.INTERNET\"/><application androidQlabel=\"AC Infinity\" androidQusesCleartextTraffic=\"true\" androidQtheme=\"@style/Theme.AppCompat.NoActionBar\"><activity androidQname=\".MainActivity\" androidQexported=\"true\" androidQscreenOrientation=\"landscape\"><intent-filter><action androidQname=\"android.intent.action.MAIN\"/><category androidQname=\"android.intent.category.LAUNCHER\"/></intent-filter></activity></application></manifest>".replace("Q",chr(58)); open("app/src/main/AndroidManifest.xml","w").write(s)'
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
