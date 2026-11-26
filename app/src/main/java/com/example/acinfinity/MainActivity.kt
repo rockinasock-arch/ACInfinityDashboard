@@ -31,7 +31,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showLogin() {
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setBackgroundColor(Color.parseColor("#0B0D11")); setPadding(120, 40, 120, 40) }
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setBackgroundColor(Color.parseColor("#0D0F12")); setPadding(120, 40, 120, 40) }
         val title = TextView(this).apply { text = "AC Infinity Wall Dashboard"; textSize = 22f; setTextColor(Color.WHITE); gravity = Gravity.CENTER }
         val email = EditText(this).apply { hint = "AC Infinity Email"; setHintTextColor(Color.GRAY); setTextColor(Color.WHITE); inputType = InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS }
         val pass = EditText(this).apply { hint = "Password"; setHintTextColor(Color.GRAY); setTextColor(Color.WHITE); inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD }
@@ -91,7 +91,7 @@ class MainActivity : AppCompatActivity() {
                         var hasVpd = false
                         for (s in 0 until sArr.length()) {
                             val so = sArr.getJSONObject(s); val sv = so.optDouble("sensorData") / 100.0
-                            when (so.optInt("sensorType")) { 1 -> if (sv > 0) temp = sv; 2 -> if (sv > 0) rh = sv; 3 -> if (sv > 0) { vpd = sv; hasVpd = true }; 10 -> if (sv > 0) ph = sv; 11 -> if (sv > 0) ec = sv; 12, 13 -> if (sv > 0) wt = sv }
+                            when (so.optInt("sensorType")) { 1 -> if (sv > 0) temp = sv; 2 -> if (sv > 0) rh = sv; 3 -> if (sv > 0) { vpd = sv; hasVpd = true }; 10, 12 -> if (sv > 0) wt = sv; 11, 13 -> if (sv > 0) ph = sv; 14 -> if (sv > 0) ec = sv }
                         }
                         if (devType == 20 && !hasVpd) vpd = (0.61078 * exp((17.27 * temp) / (temp + 237.3))) * (1.0 - rh / 100.0)
                     }
