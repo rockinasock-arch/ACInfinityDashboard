@@ -31,7 +31,7 @@ class DashboardView(context: Context, private val onLogout: () -> Unit) : WebVie
         for (c in list) {
             val ports = JSONArray()
             for (p in c.ports) ports.put(JSONObject().put("name", p.name).put("val", p.valueText).put("on", p.isOn))
-            arr.put(JSONObject().put("name", c.name).put("type", c.type).put("temp", c.tempC).put("rh", c.rh).put("vpd", c.vpd).put("ph", c.ph ?: -1).put("ec", c.ec ?: -1).put("wt", c.waterTempC ?: -1).put("ports", ports))
+            arr.put(JSONObject().put("name", c.name).put("type", c.type).put("temp", c.tempC).put("rh", c.rh).put("vpd", c.vpd).put("ph", c.ph ?: -1).put("ec", c.ec ?: -1).put("wt", c.rawHydro).put("ports", ports))
         }
         post { evaluateJavascript("window.renderData && renderData($arr);", null) }
     }
@@ -86,7 +86,7 @@ function ring(pct,col,sw){const d=276,o=d-(d*Math.min(1,Math.max(.05,pct)));retu
 function renderData(list){if(!list||!list.length)return;
 document.getElementById('app').innerHTML=list.slice(0,2).map(c=>{
 const vOk=c.type==20?(c.vpd>=0.8&&c.vpd<=1.5):(c.vpd>=0.6&&c.vpd<=1.2);
-const hy=(c.ph>=0||c.ec>=0||c.wt>=0)?'<div class="hydro"><div class="hpill"><span class="hl">pH</span><span class="hv ph">'+(c.ph>=0?c.ph.toFixed(1):'--')+'</span></div><div class="hpill"><span class="hl">EC</span><span class="hv">'+(c.ec>=0?c.ec.toFixed(2):'--')+'</span></div><div class="hpill"><span class="hl">TEMP</span><span class="hv wt">'+(c.wt>=0?c.wt.toFixed(1)+'°C':'--')+'</span></div></div>':'';
+const hy=(c.ph>=0||c.ec>=0||c.wt)?'<div class="hydro"><div class="hpill"><span class="hl">pH</span><span class="hv ph">'+(c.ph>=0?c.ph.toFixed(1):'--')+'</span></div><div class="hpill"><span class="hl">EC</span><span class="hv">'+(c.ec>=0?c.ec.toFixed(2):'--')+'</span></div><div class="hpill"><span class="hl">TEMP</span><span class="hv wt">'+(c.wt||'--')+'</span></div></div>':'';
 const ps=c.ports.map(p=>{const num=p.val==='ON'?10:(parseInt(p.val)||0);return'<div class="ptile '+(p.on?'on ':'')+(p.name.toLowerCase().includes('fan')?'fan':'')+'"><div class="pcircle">'+ring(p.on?num/10:0,p.on?'#10B981':'#222730',6)+ico(p.name)+'</div><div class="pval">'+p.val+'</div><div class="plbl">'+(p.name||'PORT')+'</div></div>';}).join('');
 return'<div class="zone"><div class="zhdr"><span>'+c.name.toUpperCase()+' ZONE</span><span class="zlive"><i></i>LIVE SYNCED</span></div><div class="rings"><div class="ring-box">'+ring(c.temp/35,'#EF4444',7)+'<div class="rval">'+c.temp.toFixed(1)+'°C</div><div class="rlbl">TEMP</div></div><div class="ring-box">'+ring(c.vpd/2.0,vOk?'#10B981':'#EF4444',7)+'<div class="rval">'+c.vpd.toFixed(2)+'</div><div class="rlbl">VPD kPa</div></div><div class="ring-box">'+ring(c.rh/100,'#10B981',7)+'<div class="rval">'+c.rh.toFixed(1)+'%</div><div class="rlbl">HUMIDITY</div></div></div>'+hy+'<div class="ports">'+ps+'</div></div>';
 }).join('');}
