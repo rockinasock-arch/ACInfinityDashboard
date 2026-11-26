@@ -1,166 +1,106 @@
 package com.example.acinfinity
 
-import android.animation.ValueAnimator
 import android.content.Context
-import android.graphics.*
-import android.view.MotionEvent
-import android.view.View
-import android.view.animation.LinearInterpolator
-import kotlin.math.cos
-import kotlin.math.min
-import kotlin.math.sin
+import android.graphics.Color
+import android.os.*
+import android.text.InputType
+import android.view.*
+import android.widget.*
+import androidx.appcompat.app.AppCompatActivity
+import org.json.JSONObject
+import java.net.*
+import kotlin.concurrent.thread
 
-class DashboardView(context: Context, private val onLogout: () -> Unit) : View(context) {
-    private var controllers: List<ControllerData> = emptyList()
-    private var animPhase = 0f
-    private var dotTaps = 0
-    private var lastTapMs = 0L
+data class PortData(val id: Int, val name: String, val valueText: String, val isOn: Boolean, val loadType: Int)
+data class ControllerData(val id: String, val name: String, val type: Int, val tempC: Double, val rh: Double, val vpd: Double, val tempTrend: Int, val rhTrend: Int, val ph: Double?, val ec: Double?, val waterTempC: Double?, val ports: List<PortData>)
 
-    private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#0A0B0E") }
-    private val cardPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#12151C") }
-    private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 3f; color = Color.parseColor("#EC4899") }
-    private val pillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#1A1F2B") }
-    private val ringBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 16f; color = Color.parseColor("#252A36") }
-    private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeWidth = 16f; color = Color.parseColor("#F43F85") }
-    private val portRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 4f }
-    private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeWidth = 3.5f }
-    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD) }
-    private val subPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#94A3B8") }
+class MainActivity : AppCompatActivity() {
+    private val handler = Handler(Looper.getMainLooper())
+    private lateinit var dashboardView: DashboardView
+    private var token: String? = null
+    private var polling = false
 
-    private val animator = ValueAnimator.ofFloat(0f, 360f).apply {
-        duration = 6000L; repeatCount = ValueAnimator.INFINITE; interpolator = LinearInterpolator()
-        addUpdateListener { animPhase = it.animatedValue as Float; invalidate() }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        token = getSharedPreferences("aci_prefs", Context.MODE_PRIVATE).getString("token", null)
+        if (token != null) showDashboard() else showLogin()
     }
 
-    init { animator.start() }
-
-    fun updateData(list: List<ControllerData>) { controllers = list; invalidate() }
-
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_DOWN && event.x < width * 0.15f && event.y < height * 0.20f) {
-            val now = System.currentTimeMillis()
-            dotTaps = if (now - lastTapMs < 1500L) dotTaps + 1 else 1
-            lastTapMs = now
-            if (dotTaps >= 7) { dotTaps = 0; onLogout() }
+    private fun showLogin() {
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setBackgroundColor(Color.parseColor("#0A0B0E")); setPadding(120, 40, 120, 40) }
+        val title = TextView(this).apply { text = "AC Infinity Wall Dashboard"; textSize = 22f; setTextColor(Color.WHITE); gravity = Gravity.CENTER }
+        val email = EditText(this).apply { hint = "AC Infinity Email"; setHintTextColor(Color.GRAY); setTextColor(Color.WHITE); inputType = InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS }
+        val pass = EditText(this).apply { hint = "Password"; setHintTextColor(Color.GRAY); setTextColor(Color.WHITE); inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD }
+        val status = TextView(this).apply { setTextColor(Color.parseColor("#F43F85")); gravity = Gravity.CENTER }
+        val btn = Button(this).apply {
+            text = "Connect Controllers"; setBackgroundColor(Color.parseColor("#F43F85")); setTextColor(Color.WHITE)
+            setOnClickListener { status.text = "Connecting..."; login(email.text.toString().trim(), pass.text.toString()) { ok, msg -> handler.post { if (ok) showDashboard() else status.text = msg } } }
         }
-        return true
+        listOf(title, email, pass, btn, status).forEach { root.addView(it) }
+        setContentView(root)
     }
 
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        val w = width.toFloat(); val h = height.toFloat()
-        canvas.drawRect(0f, 0f, w, h, bgPaint)
-        if (controllers.isEmpty()) {
-            textPaint.textSize = h * 0.05f; textPaint.textAlign = Paint.Align.CENTER
-            canvas.drawText("Syncing AC Infinity Cloud...", w / 2f, h / 2f, textPaint)
-            return
-        }
-        val pad = w * 0.02f; val gap = w * 0.02f
-        val count = min(2, controllers.size)
-        val cardW = (w - pad * 2 - gap * (count - 1)) / count
-        val cardH = h - pad * 2
-        for (i in 0 until count) drawCard(canvas, controllers[i], pad + i * (cardW + gap), pad, cardW, cardH)
+    private fun showDashboard() {
+        dashboardView = DashboardView(this) { getSharedPreferences("aci_prefs", Context.MODE_PRIVATE).edit().clear().apply(); polling = false; showLogin() }
+        setContentView(dashboardView); polling = true; pollLoop()
     }
 
-    private fun drawCard(canvas: Canvas, c: ControllerData, x: Float, y: Float, w: Float, h: Float) {
-        val rect = RectF(x, y, x + w, y + h)
-        canvas.drawRoundRect(rect, 32f, 32f, cardPaint)
-        canvas.drawRoundRect(rect, 32f, 32f, borderPaint)
+    private fun pollLoop() { if (!polling) return; fetchDevices(); handler.postDelayed({ pollLoop() }, 15000) }
 
-        val pulse = 0.65f + 0.35f * sin(Math.toRadians(animPhase.toDouble() * 2)).toFloat()
-        val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#10B981"); alpha = (pulse * 255).toInt() }
-        canvas.drawCircle(x + w * 0.06f, y + h * 0.09f, h * 0.016f, dotPaint)
-
-        textPaint.textAlign = Paint.Align.LEFT; textPaint.textSize = h * 0.055f
-        canvas.drawText(c.name, x + w * 0.10f, y + h * 0.108f, textPaint)
-
-        val badgeR = h * 0.030f
-        val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#065F46") }
-        canvas.drawCircle(x + w * 0.85f, y + h * 0.09f, badgeR, badgePaint)
-        canvas.drawCircle(x + w * 0.92f, y + h * 0.09f, badgeR, badgePaint)
-
-        val cx = x + w * 0.50f; val cy = y + h * 0.38f
-        val radius = min(w * 0.17f, h * 0.19f)
-        val oval = RectF(cx - radius, cy - radius, cx + radius, cy + radius)
-        canvas.drawArc(oval, 0f, 360f, false, ringBgPaint)
-        canvas.drawArc(oval, -90f, ((c.vpd / 2.5).coerceIn(0.05, 1.0) * 360.0).toFloat(), false, ringPaint)
-
-        textPaint.textAlign = Paint.Align.CENTER; textPaint.textSize = radius * 0.56f
-        canvas.drawText(String.format("%.2f", c.vpd), cx, cy + radius * 0.14f, textPaint)
-        subPaint.textAlign = Paint.Align.CENTER; subPaint.textSize = radius * 0.25f
-        canvas.drawText("VPD kPa", cx, cy + radius * 0.48f, subPaint)
-
-        val lx = x + w * 0.18f
-        textPaint.textSize = h * 0.072f
-        val tArrow = if (c.tempTrend > 0) "↑" else if (c.tempTrend < 0) "↓" else ""
-        canvas.drawText(String.format("%.1f°%s", c.tempC, tArrow), lx, cy + h * 0.02f, textPaint)
-        subPaint.textSize = h * 0.032f
-        canvas.drawText("TEMP °C", lx, cy + h * 0.075f, subPaint)
-
-        val rx = x + w * 0.82f
-        textPaint.textSize = h * 0.072f
-        val hArrow = if (c.rhTrend > 0) "↑" else if (c.rhTrend < 0) "↓" else ""
-        canvas.drawText(String.format("%.1f%%%s", c.rh, hArrow), rx, cy + h * 0.02f, textPaint)
-        subPaint.textSize = h * 0.032f
-        canvas.drawText("HUMIDITY", rx, cy + h * 0.075f, subPaint)
-
-        if (c.ph != null || c.ec != null || c.waterTempC != null) {
-            val pillRect = RectF(x + w * 0.08f, y + h * 0.61f, x + w * 0.92f, y + h * 0.70f)
-            canvas.drawRoundRect(pillRect, 24f, 24f, pillPaint)
-            subPaint.textAlign = Paint.Align.CENTER; subPaint.textSize = h * 0.034f
-            val phStr = c.ph?.let { String.format("pH %.1f", it) } ?: "pH --"
-            val ecStr = c.ec?.let { String.format("EC %.2f", it) } ?: "EC --"
-            val wtStr = c.waterTempC?.let { String.format("H2O %.1f°", it) } ?: "H2O --"
-            canvas.drawText("$phStr    •    $ecStr    •    $wtStr", cx, y + h * 0.668f, subPaint)
+    private fun apiPost(path: String, body: String, tk: String? = null): String {
+        val host = listOf("www", "acinfinityserver", "com").joinToString(".")
+        val conn = (URL("http", host, path).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"; doOutput = true; connectTimeout = 10000; readTimeout = 10000
+            setRequestProperty("Content-Type", "application/x-www-form-urlencoded"); setRequestProperty("User-Agent", "ACInfinity/1.9.7 (Android)")
+            if (tk != null) setRequestProperty("token", tk)
         }
+        conn.outputStream.use { it.write(body.toByteArray()) }
+        return (if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText().trim()
+    }
 
-        val pCount = c.ports.size.coerceAtLeast(1)
-        val step = (w * 0.88f) / pCount
-        val pRadius = min(step * 0.36f, h * 0.082f)
-        val py = y + h * 0.84f
-
-        for (idx in c.ports.indices) {
-            val port = c.ports[idx]
-            val px = x + w * 0.06f + step * (idx + 0.5f)
-            val activeColor = if (port.isOn) Color.parseColor("#14B8A6") else Color.parseColor("#475569")
-            portRingPaint.color = activeColor
-            iconPaint.color = activeColor
-            canvas.drawCircle(px, py, pRadius, pillPaint)
-            canvas.drawCircle(px, py, pRadius, portRingPaint)
-
-            drawDeviceIcon(canvas, port, px, py - pRadius * 0.34f, pRadius * 0.28f)
-
-            textPaint.textAlign = Paint.Align.CENTER
-            textPaint.textSize = if (port.valueText.length > 1) pRadius * 0.50f else pRadius * 0.66f
-            canvas.drawText(port.valueText, px, py + pRadius * 0.52f, textPaint)
+    private fun login(email: String, pass: String, cb: (Boolean, String) -> Unit) {
+        thread {
+            try {
+                val p = if (pass.length > 25) pass.substring(0, 25) else pass
+                val res = JSONObject(apiPost("/api/user/appUserLogin", "appEmail=${URLEncoder.encode(email, "UTF-8")}&appPasswordl=${URLEncoder.encode(p, "UTF-8")}"))
+                if (res.optInt("code") == 200) {
+                    token = res.getJSONObject("data").getString("appId")
+                    getSharedPreferences("aci_prefs", Context.MODE_PRIVATE).edit().putString("token", token).apply(); cb(true, "OK")
+                } else cb(false, "API ${res.optInt("code")}: ${res.optString("msg")}")
+            } catch (e: Exception) { cb(false, "Error: ${e.message}") }
         }
     }
 
-    private fun drawDeviceIcon(canvas: Canvas, p: PortData, cx: Float, cy: Float, r: Float) {
-        val n = p.name.lowercase()
-        when {
-            n.contains("fan") -> {
-                val rot = if (p.isOn) animPhase * 2f else 0f
-                for (b in 0..2) {
-                    val rad = Math.toRadians((rot + b * 120).toDouble())
-                    canvas.drawLine(cx, cy, cx + cos(rad).toFloat() * r, cy + sin(rad).toFloat() * r, iconPaint)
+    private fun fetchDevices() {
+        val tk = token ?: return
+        thread {
+            try {
+                val res = JSONObject(apiPost("/api/user/devInfoListAll", "userId=${URLEncoder.encode(tk, "UTF-8")}", tk))
+                if (res.optInt("code") != 200) return@thread
+                val arr = res.getJSONArray("data"); val list = mutableListOf<ControllerData>()
+                for (i in 0 until arr.length()) {
+                    val d = arr.getJSONObject(i); val info = d.optJSONObject("deviceInfo") ?: d
+                    var temp = info.optDouble("temperature", 2200.0) / 100.0; var rh = info.optDouble("humidity", 5500.0) / 100.0; var vpd = info.optDouble("vpdnums", 100.0) / 100.0
+                    var ph: Double? = null; var ec: Double? = null; var wt: Double? = null
+                    val sArr = info.optJSONArray("sensors")
+                    if (sArr != null) for (s in 0 until sArr.length()) {
+                        val so = sArr.getJSONObject(s); val sv = so.optDouble("sensorData") / 100.0
+                        when (so.optInt("sensorType")) { 0 -> if (sv > 0) temp = sv; 1 -> if (sv > 0) rh = sv; 2 -> if (sv > 0) vpd = sv; 10, 13 -> if (sv > 0) wt = sv; 11 -> if (sv > 0) ph = sv; 12 -> if (sv > 0) ec = sv }
+                    }
+                    val pArr = info.optJSONArray("ports"); val ports = mutableListOf<PortData>()
+                    if (pArr != null) for (p in 0 until pArr.length()) {
+                        val po = pArr.getJSONObject(p); if (po.optInt("online", 0) != 1) continue
+                        val speak = po.optInt("speak", 0); val lt = po.optInt("loadType", 1)
+                        val isOut = lt == 4 || lt == 5 || (po.optInt("curMode") == 2 && speak == 10)
+                        ports.add(PortData(po.optInt("port", p + 1), po.optString("portName", ""), if (isOut) (if (speak > 0) "ON" else "OFF") else "$speak", speak > 0, lt))
+                    }
+                    list.add(ControllerData(d.optString("devId", "$i"), d.optString("devName", "Controller"), d.optInt("devType", 11), temp, rh, vpd, info.optInt("tTrend", 0), info.optInt("hTrend", 0), ph, ec, wt, ports))
                 }
-            }
-            n.contains("light") -> {
-                canvas.drawCircle(cx, cy, r * 0.45f, iconPaint)
-                for (b in 0..5) {
-                    val rad = Math.toRadians((b * 60).toDouble())
-                    canvas.drawLine(cx + cos(rad).toFloat() * r * 0.65f, cy + sin(rad).toFloat() * r * 0.65f, cx + cos(rad).toFloat() * r, cy + sin(rad).toFloat() * r, iconPaint)
-                }
-            }
-            n.contains("heat") -> {
-                val path = Path().apply { moveTo(cx, cy - r); quadTo(cx + r, cy, cx, cy + r); quadTo(cx - r, cy, cx, cy - r) }
-                canvas.drawPath(path, iconPaint)
-            }
-            else -> {
-                val path = Path().apply { moveTo(cx, cy - r); lineTo(cx + r * 0.75f, cy + r * 0.35f); arcTo(RectF(cx - r * 0.75f, cy - r * 0.3f, cx + r * 0.75f, cy + r), 0f, 180f); close() }
-                canvas.drawPath(path, iconPaint)
-            }
+                val sorted = list.sortedByDescending { it.type == 20 }
+                handler.post { dashboardView.updateData(sorted) }
+            } catch (_: Exception) {}
         }
     }
 }
