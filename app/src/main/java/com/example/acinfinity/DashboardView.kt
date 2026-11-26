@@ -69,6 +69,7 @@ body{background:#050608;color:#F8FAFC;height:100vh;display:flex;flex-direction:c
     <div class="rings"><div class="ring" id="vtr"><div class="val" id="vt">--°C</div><div class="lbl">TEMP</div></div>
       <div class="ring vpd" id="vvr"><div class="val" id="vv">--</div><div class="lbl">VPD kPa</div></div>
       <div class="ring" id="vhr"><div class="val" id="vh">--%</div><div class="lbl">RH</div></div></div>
+    <div class="hydro" style="visibility:hidden"><span class="pill">--</span></div>
     <div class="ports" id="vp"></div></div>
 </div><script>
 const S={fan:'<circle cx="12" cy="12" r="2"/><path d="M12 10c0-3 2-6 4.5-5S18 9 14 11m-1 2.5c2.5 1.5 4 4.5 2 6s-4.5-.5-4-4.5m-2 0c-2.5 1.5-6 1.5-6-1s3-3.5 6-1"/>',
