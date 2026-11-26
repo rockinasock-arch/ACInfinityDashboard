@@ -11,8 +11,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Unpack Code
-        run: python3 part1.py && python3 part2.py
+      - name: Unpack and Auto-Fix Code
+        run: |
+          python3 part1.py && python3 part2.py
+          python3 -c 'f="app/src/main/java/com/example/acinfinity/MainActivity.kt"; s=open(f).read().replace(").map { i ->", ").forEach { i ->").replace("ControllerData(\n", "list.add(ControllerData(\n").replace("                }\n                handler.post", "                })\n                handler.post").replace("val list = (0 until arr.length())", "val list = mutableListOf<ControllerData>(); (0 until arr.length())"); open(f,"w").write(s)'
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
