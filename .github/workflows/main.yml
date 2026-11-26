@@ -13,7 +13,8 @@ jobs:
 
       - name: Unpack Clean Code
         run: |
-          python3 part1.py && python3 fix_code.py && python3 fix_code2.py && python3 fix_code3.py && python3 part2.py
+          python3 -c 'import base64; open("app/src/main/AndroidManifest.xml","wb").write(base64.b64decode("PG1hbmlmZXN0IHhtbG5zOmFuZHJvaWQ9Imh0dHA6Ly9zY2hlbWFzLmFuZHJvaWQuY29tL2Fway9yZXMvYW5kcm9pZCI+PHVzZXMtcGVybWlzc2lvbiBhbmRyb2lkOm5hbWU9ImFuZHJvaWQucGVybWlzc2lvbi5JTlRFUk5FVCIvPjxhcHBsaWNhdGlvbiBhbmRyb2lkOmxhYmVsPSJBQyBJbmZpbml0eSIgYW5kcm9pZDp1c2VzQ2xlYXJ0ZXh0VHJhZmZpYz0idHJ1ZSIgYW5kcm9pZDp0aGVtZT0iQHN0eWxlL1RoZW1lLkFwcENvbXBhdC5Ob0FjdGlvbkJhciI+PGFjdGl2aXR5IGFuZHJvaWQ6bmFtZT0iLk1haW5BY3Rpdml0eSIgYW5kcm9pZDpleHBvcnRlZD0idHJ1ZSIgYW5kcm9pZDpzY3JlZW5PcmllbnRhdGlvbj0ibGFuZHNjYXBlIj48aW50ZW50LWZpbHRlcj48YWN0aW9uIGFuZHJvaWQ6bmFtZT0iYW5kcm9pZC5pbnRlbnQuYWN0aW9uLk1BSU4iLz48Y2F0ZWdvcnkgYW5kcm9pZDpuYW1lPSJhbmRyb2lkLmludGVudC5jYXRlZ29yeS5MQVVOQ0hFUiIvPjwvaW50ZW50LWZpbHRlcj48L2FjdGl2aXR5PjwvYXBwbGljYXRpb24+PC9tYW5pZmVzdD4="))'
+          python3 fix_code.py && python3 fix_code2.py && python3 fix_code3.py && python3 part2.py
           python3 -c 'f="app/src/main/java/com/example/acinfinity/MainActivity.kt"; open(f,"w").write(open(f).read().replace("$I","$i"))'
 
       - name: Set up JDK 17
