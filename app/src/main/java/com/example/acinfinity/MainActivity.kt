@@ -57,11 +57,13 @@ class MainActivity : AppCompatActivity() {
         return (if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText().trim()
     }
 
-    private fun fetchLightSched(devId: String, port: Int, tk: String): Pair<Int, Int>? = try {
-        val data = JSONObject(apiPost("/api/dev/getdevModeSettingList", "devId=$devId&port=$port", tk)).optJSONObject("data") ?: return null
-        val st = data.optInt("schedStartTime", data.optInt("onTime", -1)); val et = data.optInt("schedEndTime", data.optInt("offTime", -1))
-        if (st in 0..1439 && et in 0..1439 && st != et) st to et else null
-    } catch (_: Exception) { null }
+    private fun fetchLightSched(devId: String, port: Int, tk: String): Pair<Int, Int>? {
+        return try {
+            val data = JSONObject(apiPost("/api/dev/getdevModeSettingList", "devId=$devId&port=$port", tk)).optJSONObject("data") ?: return null
+            val st = data.optInt("schedStartTime", data.optInt("onTime", -1)); val et = data.optInt("schedEndTime", data.optInt("offTime", -1))
+            if (st in 0..1439 && et in 0..1439 && st != et) st to et else null
+        } catch (_: Exception) { null }
+    }
 
     private fun login(email: String, pass: String, cb: (Boolean, String) -> Unit) {
         thread {
