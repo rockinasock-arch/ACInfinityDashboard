@@ -9,7 +9,6 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import org.json.JSONObject
 import java.net.*
-import java.util.Calendar
 import kotlin.concurrent.thread
 import kotlin.math.exp
 
@@ -48,12 +47,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun pollLoop() { if (!polling) return; fetchDevices(); handler.postDelayed({ pollLoop() }, 15000) }
 
-    private fun apiPost(path: String, body: String, tk: String? = null, modeApi: Boolean = false): String {
+    private fun apiPost(path: String, body: String, tk: String? = null): String {
         val conn = (URL("http", listOf("www", "acinfinityserver", "com").joinToString("."), path).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"; doOutput = true; connectTimeout = 10000; readTimeout = 10000
             setRequestProperty("Content-Type", "application/x-www-form-urlencoded"); setRequestProperty("User-Agent", "ACInfinity/1.9.7 (Android)")
             if (tk != null) setRequestProperty("token", tk)
-            if (modeApi) { setRequestProperty("phoneType", "1"); setRequestProperty("appVersion", "1.9.7"); setRequestProperty("minversion", "3.5") }
         }
         conn.outputStream.use { it.write(body.toByteArray()) }
         return (if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText().trim()
@@ -61,7 +59,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun fetchLightSched(devId: String, port: Int, tk: String): Pair<Int, Int>? {
         return try {
-            val res = JSONObject(apiPost("/api/dev/getdevModeSettingList", "devId=$devId&port=$port", tk, true))
+            val res = JSONObject(apiPost("/api/dev/getdevModeSettingList", "devId=$devId&port=$port", tk))
             val d = res.optJSONObject("data"); val a = res.optJSONArray("data")
             val items = if (a != null) (0 until a.length()).mapNotNull { a.optJSONObject(it) } else listOfNotNull(d)
             for (o in items) {
@@ -119,8 +117,6 @@ class MainActivity : AppCompatActivity() {
                     for (po in lightPorts.sortedByDescending { it.optString("portName").contains("on/off", true) }) {
                         val sc = fetchLightSched(devId, po.optInt("port", 1), tk)
                         if (sc != null) { lOn = sc.first; lOff = sc.second; break }
-                        val sur = po.optInt("surplus", 0)
-                        if (sur > 0) { val cal = Calendar.getInstance(); val cur = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE); val nxt = (cur + sur / 60) % 1440; val dur = if (devType == 20) 720 else 1080; if (po.optInt("speak", 0) > 0) { lOff = nxt; lOn = (nxt - dur + 1440) % 1440 } else { lOn = nxt; lOff = (nxt + dur) % 1440 }; break }
                     }
                     list.add(ControllerData(devId, d.optString("devName", "Controller"), devType, temp, rh, vpd, ph, ec, wt, lOn, lOff, ports))
                 }
