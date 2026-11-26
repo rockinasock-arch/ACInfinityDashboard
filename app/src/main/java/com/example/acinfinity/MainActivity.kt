@@ -51,17 +51,23 @@ class MainActivity : AppCompatActivity() {
         val conn = (URL("http", listOf("www", "acinfinityserver", "com").joinToString("."), path).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"; doOutput = true; connectTimeout = 10000; readTimeout = 10000
             setRequestProperty("Content-Type", "application/x-www-form-urlencoded"); setRequestProperty("User-Agent", "ACInfinity/1.9.7 (Android)")
-            if (tk != null) { setRequestProperty("token", tk); setRequestProperty("phoneType", "1"); setRequestProperty("appVersion", "1.9.7") }
+            if (tk != null) { setRequestProperty("token", tk); setRequestProperty("phoneType", "1"); setRequestProperty("appVersion", "1.9.7"); setRequestProperty("minversion", "3.5") }
         }
         conn.outputStream.use { it.write(body.toByteArray()) }
         return (if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream).bufferedReader().readText().trim()
     }
 
+    private fun parseSched(o: JSONObject?): Pair<Int, Int>? {
+        if (o == null) return null
+        val st = o.optInt("schedStartTime", o.optInt("onTime", -1))
+        val et = o.optInt("schedEndtTime", o.optInt("schedEndTime", o.optInt("offTime", -1)))
+        return if (st in 0..1439 && et in 0..1439 && st != et) st to et else null
+    }
+
     private fun fetchLightSched(devId: String, port: Int, tk: String): Pair<Int, Int>? {
         return try {
-            val data = JSONObject(apiPost("/api/dev/getdevModeSettingList", "devId=$devId&port=$port", tk)).optJSONObject("data") ?: return null
-            val st = data.optInt("schedStartTime", data.optInt("onTime", -1)); val et = data.optInt("schedEndTime", data.optInt("offTime", -1))
-            if (st in 0..1439 && et in 0..1439 && st != et) st to et else null
+            val res = JSONObject(apiPost("/api/dev/getdevModeSettingList", "devId=$devId&port=$port", tk))
+            parseSched(res.optJSONObject("data")) ?: res.optJSONArray("data")?.let { a -> (0 until a.length()).firstNotNullOfOrNull { parseSched(a.optJSONObject(it)) } }
         } catch (_: Exception) { null }
     }
 
@@ -103,7 +109,7 @@ class MainActivity : AppCompatActivity() {
                         for (p in 0 until pArr.length()) {
                             val po = pArr.getJSONObject(p); if (po.optInt("online", 0) != 1) continue
                             val portNum = po.optInt("port", p + 1); val speak = po.optInt("speak", 0); val lt = po.optInt("loadType", 1); val pName = po.optString("portName", "")
-                            if (lOn < 0 && (pName.contains("light", true) || lt == 2)) fetchLightSched(devId, portNum, tk)?.let { lOn = it.first; lOff = it.second }
+                            if (lOn < 0 && (pName.contains("light", true) || lt == 2)) (parseSched(po) ?: fetchLightSched(devId, portNum, tk))?.let { lOn = it.first; lOff = it.second }
                             val isOut = lt in 4..6 || pName.lowercase().let { it.contains("dehum") || it.contains("on/off") }
                             ports.add(PortData(portNum, pName, if (isOut) (if (speak > 0) "ON" else "OFF") else "$speak", speak > 0, lt))
                         }
