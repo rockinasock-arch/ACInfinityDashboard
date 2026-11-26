@@ -58,11 +58,11 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setBackgroundColor(Color.parseColor("#0A0B0E"))
-            setPadding(120, 60, 120, 60)
+            setPadding(120, 40, 120, 40)
         }
         val title = TextView(this).apply {
             text = "AC Infinity Wall Dashboard"
-            textSize = 24f
+            textSize = 22f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
         }
@@ -87,7 +87,7 @@ class MainActivity : AppCompatActivity() {
             setBackgroundColor(Color.parseColor("#F43F85"))
             setTextColor(Color.WHITE)
             setOnClickListener {
-                status.text = "Connecting..."
+                status.text = "Connecting via HTTPS..."
                 login(emailInput.text.toString().trim(), passInput.text.toString()) { ok, msg ->
                     handler.post {
                         if (ok) showDashboard() else status.text = msg
@@ -123,15 +123,21 @@ class MainActivity : AppCompatActivity() {
     private fun login(email: String, pass: String, cb: (Boolean, String) -> Unit) {
         thread {
             try {
-                val url = URL("http://acinfinityserver.com")
+                val safePass = if (pass.length > 25) pass.substring(0, 25) else pass
+                val url = URL("https://acinfinityserver.com")
                 val conn = (url.openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     doOutput = true
+                    connectTimeout = 10000
+                    readTimeout = 10000
                     setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                    setRequestProperty("User-Agent", "ACInfinity/1.9.7 (Android)")
                 }
-                val body = "appEmail=${URLEncoder.encode(email, "UTF-8")}&appPasswordl=${URLEncoder.encode(pass, "UTF-8")}"
+                val body = "appEmail=${URLEncoder.encode(email, "UTF-8")}&appPasswordl=${URLEncoder.encode(safePass, "UTF-8")}"
                 conn.outputStream.use { it.write(body.toByteArray()) }
-                val res = JSONObject(conn.inputStream.bufferedReader().readText())
+                val stream = if (conn.responseCode in 200..299) conn.inputStream else conn.errorStream
+                val raw = stream.bufferedReader().readText()
+                val res = JSONObject(raw)
                 if (res.optInt("code") == 200) {
                     val data = res.getJSONObject("data")
                     token = data.getString("appId")
@@ -140,10 +146,10 @@ class MainActivity : AppCompatActivity() {
                         .putString("token", token).putString("userId", userId).apply()
                     cb(true, "Connected")
                 } else {
-                    cb(false, res.optString("msg", "Login failed"))
+                    cb(false, "Server (${res.optInt("code")}): ${res.optString("msg", raw)}")
                 }
             } catch (e: Exception) {
-                cb(false, "Error: ${e.message}")
+                cb(false, "Error: ${e.javaClass.simpleName} - ${e.message}")
             }
         }
     }
@@ -152,11 +158,14 @@ class MainActivity : AppCompatActivity() {
         val tk = token ?: return
         thread {
             try {
-                val url = URL("http://acinfinityserver.com")
+                val url = URL("https://acinfinityserver.com")
                 val conn = (url.openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     doOutput = true
+                    connectTimeout = 10000
+                    readTimeout = 10000
                     setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                    setRequestProperty("User-Agent", "ACInfinity/1.9.7 (Android)")
                     setRequestProperty("token", tk)
                 }
                 val body = "userId=${URLEncoder.encode(tk, "UTF-8")}"
