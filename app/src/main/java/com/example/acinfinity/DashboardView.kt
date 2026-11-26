@@ -1,95 +1,90 @@
 package com.example.acinfinity
 
+import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Color
-import android.view.MotionEvent
-import android.webkit.WebView
-import org.json.JSONArray
-import org.json.JSONObject
+import android.webkit.*
+import org.json.*
+import java.util.Locale
 
+@SuppressLint("SetJavaScriptEnabled")
 class DashboardView(context: Context, private val onLogout: () -> Unit) : WebView(context) {
-    private var dotTaps = 0; private var lastTapMs = 0L
+    private var taps = 0; private var lastTap = 0L; private var ready = false; private var lastJson: String? = null
 
     init {
-        setBackgroundColor(Color.parseColor("#0D0F12"))
-        settings.javaScriptEnabled = true
-        loadDataWithBaseURL(null, htmlPage(), "text/html", "UTF-8", null)
-    }
-
-    override fun onTouchEvent(e: MotionEvent): Boolean {
-        if (e.action == MotionEvent.ACTION_DOWN && e.x < width * 0.15f && e.y < height * 0.20f) {
-            val now = System.currentTimeMillis()
-            dotTaps = if (now - lastTapMs < 1500L) dotTaps + 1 else 1
-            lastTapMs = now
-            if (dotTaps >= 7) { dotTaps = 0; onLogout() }
-        }
-        return super.onTouchEvent(e)
+        settings.javaScriptEnabled = true; setBackgroundColor(0xFF050608.toInt())
+        addJavascriptInterface(object {
+            @JavascriptInterface fun tapDot() = post {
+                val now = System.currentTimeMillis(); taps = if (now - lastTap < 1500) taps + 1 else 1; lastTap = now
+                if (taps >= 7) { taps = 0; onLogout() }
+            }
+        }, "App")
+        webViewClient = object : WebViewClient() { override fun onPageFinished(v: WebView?, u: String?) { ready = true; lastJson?.let { evaluateJavascript("render($it)", null) } } }
+        loadDataWithBaseURL(null, html(), "text/html", "UTF-8", null)
     }
 
     fun updateData(list: List<ControllerData>) {
-        val arr = JSONArray()
-        for (c in list) {
-            val ports = JSONArray()
-            for (p in c.ports) ports.put(JSONObject().put("name", p.name).put("val", p.valueText).put("on", p.isOn))
-            arr.put(JSONObject().put("name", c.name).put("type", c.type).put("temp", c.tempC).put("rh", c.rh).put("vpd", c.vpd).put("ph", c.ph ?: -1).put("ec", c.ec ?: -1).put("wt", c.waterTempC ?: -1).put("ports", ports))
-        }
-        post { evaluateJavascript("window.renderData && renderData($arr);", null) }
+        val root = JSONObject(); val f = list.firstOrNull { it.type == 20 } ?: list.getOrNull(0); val v = list.firstOrNull { it.type != 20 && it != f } ?: list.getOrNull(1)
+        fun pack(c: ControllerData) = JSONObject().put("t", String.format(Locale.US, "%.1f°C", c.tempC)).put("v", String.format(Locale.US, "%.2f", c.vpd)).put("h", String.format(Locale.US, "%.1f%%", c.rh))
+            .put("ph", c.ph?.let { String.format(Locale.US, "%.1f", it) } ?: "--").put("ec", c.ec?.let { String.format(Locale.US, "%.2f", it) } ?: "--").put("wt", c.waterTempC?.let { String.format(Locale.US, "%.1f°C", it) } ?: "--")
+            .put("p", JSONArray().apply { c.ports.forEach { put(JSONObject().put("n", it.name.uppercase(Locale.US)).put("v", it.valueText).put("on", it.isOn)) } })
+        if (f != null) root.put("f", pack(f)); if (v != null) root.put("v", pack(v))
+        lastJson = root.toString(); if (ready) evaluateJavascript("render($lastJson)", null)
     }
 
-    private fun htmlPage() = """
-<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+    private fun html() = """<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;user-select:none}
-body{background:#0D0F12;color:#F8FAFC;height:100vh;width:100vw;overflow:hidden;display:flex;flex-direction:column;padding:1.4vh 1.4vw;gap:1.2vh}
-.top{display:flex;align-items:center;justify-content:space-between;background:#13161B;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:.9vh 1.4vw}
-.top-l{display:flex;align-items:center;gap:10px;font-size:clamp(12px,1.3vw,16px);font-weight:700;letter-spacing:.08em}
-.dot{width:9px;height:9px;border-radius:50%;background:#10B981;box-shadow:0 0 10px #10B981;animation:pulse 2.2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.pill-sync{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.35);color:#10B981;font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;letter-spacing:.08em}
-.clk{font-size:clamp(13px,1.4vw,17px);font-weight:700;color:#CBD5E1;letter-spacing:.04em}
-.grid{flex:1;display:flex;gap:1.4vw;min-height:0}
-.zone{flex:1;background:#13161B;border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:1.6vh 1.4vw;display:flex;flex-direction:column;justify-content:space-between}
-.zhdr{display:flex;align-items:center;justify-content:space-between;font-size:clamp(12px,1.25vw,15px);font-weight:700;color:#94A3B8;letter-spacing:.1em}
-.zlive{color:#10B981;font-size:11px;display:flex;align-items:center;gap:6px}
-.zlive i{width:6px;height:6px;border-radius:50%;background:#10B981;display:inline-block}
-.rings{display:flex;justify-content:space-between;gap:1vw;margin:auto 0}
-.ring-box{position:relative;flex:1;aspect-ratio:1/1;max-width:31.5%;border-radius:50%;background:#161A20;box-shadow:inset 0 2px 10px rgba(0,0,0,.65);display:flex;flex-direction:column;align-items:center;justify-content:center}
-.ring-box svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
-.rval{font-size:clamp(22px,2.9vw,40px);font-weight:700;letter-spacing:-.02em;line-height:1.05}
-.rlbl{font-size:clamp(9px,.95vw,11px);font-weight:700;color:#64748B;letter-spacing:.12em;margin-top:3px}
-.hydro{display:flex;justify-content:center;gap:1vw}
-.hpill{background:#181C23;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:.7vh 1.2vw;display:flex;align-items:baseline;gap:6px}
-.hl{font-size:11px;font-weight:700;color:#64748B}.hv{font-size:clamp(15px,1.8vw,22px);font-weight:700}
-.hv.ph{color:#EF4444}.hv.wt{color:#10B981}
-.ports{display:flex;justify-content:center;gap:1vw;background:#101318;border:1px solid rgba(255,255,255,.05);border-radius:16px;padding:1.2vh 1vw}
-.ptile{flex:1;max-width:23%;display:flex;flex-direction:column;align-items:center;gap:5px}
-.pcircle{position:relative;width:clamp(46px,4.8vw,64px);height:clamp(46px,4.8vw,64px);border-radius:50%;background:#171B22;display:flex;align-items:center;justify-content:center}
-.pcircle svg.arc{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
-.pcircle svg.ico{width:40%;height:40%;stroke:#64748B;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;z-index:1}
-.ptile.on .pcircle svg.ico{stroke:#10B981}
-.ptile.on.fan .pcircle svg.ico{animation:spin 2s linear infinite}
-@keyframes spin{100%{transform:rotate(360deg)}}
-.pval{font-size:clamp(15px,1.7vw,21px);font-weight:700;line-height:1}
-.plbl{font-size:clamp(8px,.85vw,10px);font-weight:700;color:#64748B;letter-spacing:.08em;text-transform:uppercase;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sync{margin:auto;color:#64748B;font-size:18px;letter-spacing:.1em}
+*{box-sizing:border-box;margin:0;padding:0;font-family:sans-serif;user-select:none}
+body{background:#050608;color:#F8FAFC;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.top{height:38px;padding:0 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1E293B;font-size:13px;font-weight:700}
+.dot{width:11px;height:11px;border-radius:50%;background:#34D399;display:inline-block;margin-right:8px}
+.main{flex:1;display:flex;width:100%}
+.col{width:50%;padding:14px 18px;display:flex;flex-direction:column;justify-content:space-between}
+.col:first-child{border-right:1px solid #1E293B;background:radial-gradient(circle at 50% 45%,#34D39916,transparent 72%)}
+.col:last-child{background:radial-gradient(circle at 50% 45%,#60A5FA16,transparent 72%)}
+.hdr{display:flex;justify-content:space-between;font-size:14px;font-weight:800;letter-spacing:.07em}
+.rings{display:flex;justify-content:space-between;align-items:center;padding:0 4px}
+.ring{width:28vmin;height:28vmin;max-width:165px;max-height:165px;border-radius:50%;border:2.5px solid var(--rc,var(--c));box-shadow:0 0 14px -2px var(--rc,var(--c));display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .6s,box-shadow .6s}
+.ring.vpd{width:33vmin;height:33vmin;max-width:195px;max-height:195px;border-width:3.5px;animation:br var(--bs,4s) ease-in-out infinite}
+.ripple{animation:rp .9s ease-out!important}@keyframes br{0%,100%{box-shadow:0 0 12px -2px var(--rc,var(--c))}50%{box-shadow:0 0 28px 3px var(--rc,var(--c))}}@keyframes rp{0%{box-shadow:0 0 0 0 var(--rc,var(--c))}100%{box-shadow:0 0 0 26px transparent}}
+.val{font-size:28px;font-weight:800}.vpd .val{font-size:38px}.lbl{font-size:11px;color:#94A3B8;margin-top:4px;letter-spacing:.08em}
+.hydro{display:flex;justify-content:center;gap:14px;padding:8px 0;border-top:1px solid #1E293B;border-bottom:1px solid #1E293B}
+.pill{background:#0F172A;border:1px solid #1E293B;border-radius:99px;padding:4px 14px;font-size:13px;font-weight:700}
+.ports{display:flex;justify-content:space-around}
+.pt{display:flex;flex-direction:column;align-items:center;font-size:11px;color:#94A3B8}
+.pval{font-size:14px;font-weight:800;color:#F8FAFC;margin-bottom:4px}
+.pcirc{width:46px;height:46px;border-radius:50%;border:2px solid #334155;display:flex;align-items:center;justify-content:center;color:#64748B}
+.pcirc svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.on .pcirc{border-color:var(--c);color:var(--c);box-shadow:0 0 12px var(--c)}
+.spin{animation:sp var(--spd,2s) linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
 </style></head><body>
-<div class="top"><div class="top-l"><div class="dot"></div>AC INFINITY WALL DASHBOARD<span class="pill-sync">● LIVE SYNCED</span></div><div class="clk" id="clk">--:--</div></div>
-<div class="grid" id="app"><div class="sync">SYNCING AC INFINITY CLOUD...</div></div>
-<script>
-setInterval(()=>{document.getElementById('clk').textContent=new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});},1000);
-function ico(n){n=n.toLowerCase();
-if(n.includes('fan'))return'<svg class="ico" viewBox="0 0 24 24"><path d="M12 12c0-3 2.5-5 5-5 2 0 3 1.5 3 3 0 2-2 2-8 2zm0 0c3 0 5 2.5 5 5 0 2-1.5 3-3 3-2 0-2-2-2-8zm0 0c0 3-2.5 5-5 5-2 0-3-1.5-3-3 0-2 2-2 8-2zm0 0c-3 0-5-2.5-5-5 0-2 1.5-3 3-3 2 0 2 2 2 8z"/></svg>';
-if(n.includes('light'))return'<svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/></svg>';
-if(n.includes('heat'))return'<svg class="ico" viewBox="0 0 24 24"><path d="M12 2c.5 4-2 6-2 10a4 4 0 0 0 8 0c0-3-2-5-2-8 2 1.5 4 4.5 4 8a8 8 0 1 1-16 0c0-4.5 3.5-7.5 8-10z"/></svg>';
-return'<svg class="ico" viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>';}
-function ring(pct,col,sw){const d=276,o=d-(d*Math.min(1,Math.max(.05,pct)));return'<svg class="arc" viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" stroke="#222730" stroke-width="'+sw+'" fill="none"/><circle cx="50" cy="50" r="44" stroke="'+col+'" stroke-width="'+sw+'" stroke-linecap="round" fill="none" stroke-dasharray="'+d+'" stroke-dashoffset="'+o+'"/></svg>';}
-function renderData(list){if(!list||!list.length)return;
-document.getElementById('app').innerHTML=list.slice(0,2).map(c=>{
-const vOk=c.type==20?(c.vpd>=0.8&&c.vpd<=1.5):(c.vpd>=0.6&&c.vpd<=1.2);
-const hy=(c.ph>=0||c.ec>=0||c.wt>=0)?'<div class="hydro"><div class="hpill"><span class="hl">pH</span><span class="hv ph">'+(c.ph>=0?c.ph.toFixed(1):'--')+'</span></div><div class="hpill"><span class="hl">EC</span><span class="hv">'+(c.ec>=0?c.ec.toFixed(2):'--')+'</span></div><div class="hpill"><span class="hl">TEMP</span><span class="hv wt">'+(c.wt>=0?c.wt.toFixed(1)+'°C':'--')+'</span></div></div>':'';
-const ps=c.ports.map(p=>{const num=p.val==='ON'?10:(parseInt(p.val)||0);return'<div class="ptile '+(p.on?'on ':'')+(p.name.toLowerCase().includes('fan')?'fan':'')+'"><div class="pcircle">'+ring(p.on?num/10:0,p.on?'#10B981':'#222730',6)+ico(p.name)+'</div><div class="pval">'+p.val+'</div><div class="plbl">'+(p.name||'PORT')+'</div></div>';}).join('');
-return'<div class="zone"><div class="zhdr"><span>'+c.name.toUpperCase()+' ZONE</span><span class="zlive"><i></i>LIVE SYNCED</span></div><div class="rings"><div class="ring-box">'+ring(c.temp/35,'#EF4444',7)+'<div class="rval">'+c.temp.toFixed(1)+'°C</div><div class="rlbl">TEMP</div></div><div class="ring-box">'+ring(c.vpd/2.0,vOk?'#10B981':'#EF4444',7)+'<div class="rval">'+c.vpd.toFixed(2)+'</div><div class="rlbl">VPD kPa</div></div><div class="ring-box">'+ring(c.rh/100,'#10B981',7)+'<div class="rval">'+c.rh.toFixed(1)+'%</div><div class="rlbl">HUMIDITY</div></div></div>'+hy+'<div class="ports">'+ps+'</div></div>';
-}).join('');}
-</script></body></html>
-    """.trimIndent()
+<div class="top"><div><span class="dot" onclick="App.tapDot()"></span>AC INFINITY WALL DASHBOARD</div><div id="clk">--:--</div></div>
+<div class="main">
+  <div class="col" style="--c:#34D399"><div class="hdr"><span style="color:#34D399">FLOWER AI+</span><span id="fs">SYNCED</span></div>
+    <div class="rings"><div class="ring" id="ftr"><div class="val" id="ft">--°C</div><div class="lbl">TEMP</div></div>
+      <div class="ring vpd" id="fvr"><div class="val" id="fv">--</div><div class="lbl">VPD kPa</div></div>
+      <div class="ring" id="fhr"><div class="val" id="fh">--%</div><div class="lbl">RH</div></div></div>
+    <div class="hydro"><span class="pill" id="ph">pH --</span><span class="pill" id="ec">EC --</span><span class="pill" id="wt">WATER --°C</span></div>
+    <div class="ports" id="fp"></div></div>
+  <div class="col" style="--c:#60A5FA"><div class="hdr"><span style="color:#60A5FA">VEG 69+</span><span id="vs">SYNCED</span></div>
+    <div class="rings"><div class="ring" id="vtr"><div class="val" id="vt">--°C</div><div class="lbl">TEMP</div></div>
+      <div class="ring vpd" id="vvr"><div class="val" id="vv">--</div><div class="lbl">VPD kPa</div></div>
+      <div class="ring" id="vhr"><div class="val" id="vh">--%</div><div class="lbl">RH</div></div></div>
+    <div class="ports" id="vp"></div></div>
+</div><script>
+const S={fan:'<circle cx="12" cy="12" r="2"/><path d="M12 10c0-3 2-6 4.5-5S18 9 14 11m-1 2.5c2.5 1.5 4 4.5 2 6s-4.5-.5-4-4.5m-2 0c-2.5 1.5-6 1.5-6-1s3-3.5 6-1"/>',
+  bulb:'<path d="M9 18h6m-5 3h4M9 14c-2-1.5-3-3.5-3-6a6 6 0 1 1 12 0c0 2.5-1 4.5-3 6v1H9v-1z"/>',
+  heat:'<path d="M12 2c2 4 6 6.5 6 11a6 6 0 1 1-12 0c0-2.5 1.5-4.5 3-6-.5 2 1 3 2 3 0-3 1-5.5 1-8z"/>',
+  dehum:'<path d="M12 3l5.5 6.5a7.5 7.5 0 1 1-11 0L12 3z"/><path d="M12 10v6m-2.5-2.5L12 16l2.5-2.5"/>',
+  hum:'<path d="M12 3l5.5 6.5a7.5 7.5 0 1 1-11 0L12 3z"/><path d="M9.5 16c1-1.5 4-1.5 5 0M10.5 13.5c.8-1 2.2-1 3 0"/>'};
+function svgFor(n){if(n.includes('DEHUM'))return S.dehum;if(n.includes('HUMID'))return S.hum;if(n.includes('FAN'))return S.fan;if(n.includes('HEAT'))return S.heat;if(n.includes('LIGHT'))return S.bulb;return '<circle cx="12" cy="12" r="5"/>';}
+function tint(el,v,lo,hi,ok){const n=parseFloat(v);if(isNaN(n))return;const c=n<lo||n>hi?'#F87171':n<lo+.15||n>hi-.15?'#FBBF24':ok;el.style.setProperty('--rc',c);el.style.setProperty('--bs',c===ok?'4s':'1.8s');}
+function ports(id,list){document.getElementById(id).innerHTML=list.map(p=>{const sp=p.n.includes('FAN')&&+p.v>0?`spin" style="--spd:${Math.max(.3,2.2-p.v*.18)}s`:'';
+  return `<div class="pt ${p.on?'on':''}"><div class="pval">${p.v}</div><div class="pcirc"><svg class="${sp}" viewBox="0 0 24 24">${svgFor(p.n)}</svg></div><div style="margin-top:4px">${p.n}</div></div>`;}).join('');}
+function render(d){document.getElementById('clk').textContent=new Date().toTimeString().slice(0,5);
+  [['f','#34D399',18,28,1.0,1.5,40,65],['v','#60A5FA',20,30,0.8,1.2,55,78]].forEach(([k,ok,t1,t2,v1,v2,h1,h2])=>{if(!d[k])return;
+    document.getElementById(k+'t').textContent=d[k].t;document.getElementById(k+'v').textContent=d[k].v;document.getElementById(k+'h').textContent=d[k].h;
+    tint(document.getElementById(k+'tr'),d[k].t,t1,t2,ok);tint(document.getElementById(k+'vr'),d[k].v,v1,v2,ok);tint(document.getElementById(k+'hr'),d[k].h,h1,h2,ok);
+    const vr=document.getElementById(k+'vr');vr.classList.remove('ripple');void vr.offsetWidth;vr.classList.add('ripple');ports(k+'p',d[k].p);});
+  if(d.f){document.getElementById('ph').textContent='pH '+d.f.ph;document.getElementById('ec').textContent='EC '+d.f.ec;document.getElementById('wt').textContent='WATER '+d.f.wt;}}
+</script></body></html>"""
 }
