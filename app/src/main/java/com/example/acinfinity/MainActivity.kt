@@ -13,7 +13,7 @@ import kotlin.concurrent.thread
 import kotlin.math.exp
 
 data class PortData(val id: Int, val name: String, val valueText: String, val isOn: Boolean, val loadType: Int)
-data class ControllerData(val id: String, val name: String, val type: Int, val tempC: Double, val rh: Double, val vpd: Double, val tempTrend: Int, val rhTrend: Int, val ph: Double?, val ec: Double?, val waterTempC: Double?, val ports: List<PortData>)
+data class ControllerData(val id: String, val name: String, val type: Int, val tempC: Double, val rh: Double, val vpd: Double, val tempTrend: Int, val rhTrend: Int, val ph: Double?, val ec: Double?, val waterTempC: Double?, val rawHydro: String, val ports: List<PortData>)
 
 class MainActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
@@ -86,20 +86,13 @@ class MainActivity : AppCompatActivity() {
                 for (i in 0 until arr.length()) {
                     val d = arr.getJSONObject(i); val info = d.optJSONObject("deviceInfo") ?: d; val devType = d.optInt("devType", 11)
                     var temp = info.optDouble("temperature", 2200.0) / 100.0; var rh = info.optDouble("humidity", 5500.0) / 100.0; var vpd = info.optDouble("vpdnums", 100.0) / 100.0
-                    var ph: Double? = null; var ec: Double? = null; var wt: Double? = null; val sArr = info.optJSONArray("sensors")
+                    var ph: Double? = null; var ec: Double? = null; var wt: Double? = null; val rawList = mutableListOf<String>(); val sArr = info.optJSONArray("sensors")
                     if (sArr != null) {
                         var hasVpd = false
                         for (s in 0 until sArr.length()) {
                             val so = sArr.getJSONObject(s); val st = so.optInt("sensorType"); val sv = so.optDouble("sensorData", 0.0) / 100.0
-                            when (st) {
-                                1 -> if (sv > 0) temp = sv
-                                2 -> if (sv > 0) rh = sv
-                                3 -> if (sv > 0) { vpd = sv; hasVpd = true }
-                                13 -> if (sv > 0) ph = sv
-                                15 -> if (sv > 0) ec = if (sv > 20.0) sv / 10.0 else sv
-                                17 -> if (sv > 0) wt = sv
-                                16 -> if (sv > 0 && wt == null) wt = if (sv > 45.0) (sv - 32.0) * 5.0 / 9.0 else sv
-                            }
+                            if (st >= 10) rawList.add("$st:${String.format("%.1f", sv)}")
+                            when (st) { 1 -> if (sv > 0) temp = sv; 2 -> if (sv > 0) rh = sv; 3 -> if (sv > 0) { vpd = sv; hasVpd = true }; 13 -> if (sv > 0) ph = sv; 15 -> if (sv > 0) ec = if (sv > 20.0) sv / 10.0 else sv }
                         }
                         if (devType == 20 && !hasVpd) vpd = (0.61078 * exp((17.27 * temp) / (temp + 237.3))) * (1.0 - rh / 100.0)
                     }
@@ -110,7 +103,7 @@ class MainActivity : AppCompatActivity() {
                         val isOut = lt == 4 || lt == 5 || lt == 6 || po.optString("portName").lowercase().let { it.contains("dehum") || it.contains("on/off") }
                         ports.add(PortData(po.optInt("port", p + 1), po.optString("portName", ""), if (isOut) (if (speak > 0) "ON" else "OFF") else "$speak", speak > 0, lt))
                     }
-                    list.add(ControllerData(d.optString("devId", "$i"), d.optString("devName", "Controller"), devType, temp, rh, vpd, info.optInt("tTrend", 0), info.optInt("hTrend", 0), ph, ec, wt, ports))
+                    list.add(ControllerData(d.optString("devId", "$i"), d.optString("devName", "Controller"), devType, temp, rh, vpd, info.optInt("tTrend", 0), info.optInt("hTrend", 0), ph, ec, wt, rawList.joinToString(" "), ports))
                 }
                 val sorted = list.sortedByDescending { it.type == 20 }; handler.post { dashboardView.updateData(sorted) }
             } catch (_: Exception) {}
