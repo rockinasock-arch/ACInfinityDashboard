@@ -12,7 +12,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Unpack Clean Code
-        run: python3 part1.py && python3 fix_code.py && python3 fix_code2.py && python3 fix_code3.py && python3 part2.py
+        run: |
+          python3 part1.py && python3 fix_code.py && python3 fix_code2.py && python3 fix_code3.py && python3 part2.py
+          python3 -c 'f="app/src/main/java/com/example/acinfinity/MainActivity.kt"; open(f,"w").write(open(f).read().replace("$I","$i"))'
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
