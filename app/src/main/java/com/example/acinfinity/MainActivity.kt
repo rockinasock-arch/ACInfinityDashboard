@@ -77,7 +77,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun apiPost(path: String, body: String, tk: String? = null): String {
-        val conn = (URL("http" + ':' + "//://acinfinityserver.com$path").openConnection() as HttpURLConnection).apply {
+        val host = listOf("www", "acinfinityserver", "com").joinToString(".")
+        val conn = (URL("http", host, path).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"; doOutput = true; connectTimeout = 10000; readTimeout = 10000
             setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
             setRequestProperty("User-Agent", "ACInfinity/1.9.7 (Android)")
