@@ -25,18 +25,19 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-        token = getSharedPreferences("aci_prefs", Context.MODE_PRIVATE).getString("token", null)
-        if (token != null) showDashboard() else showLogin()
+        val prefs = getSharedPreferences("aci_prefs", Context.MODE_PRIVATE)
+        token = prefs.getString("token", null)
+        if (token != null || prefs.getString("email", null) != null) showDashboard() else showLogin()
     }
 
     private fun showLogin() {
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setBackgroundColor(Color.parseColor("#0A0B0E")); setPadding(120, 40, 120, 40) }
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setBackgroundColor(Color.parseColor("#0B0D11")); setPadding(120, 40, 120, 40) }
         val title = TextView(this).apply { text = "AC Infinity Wall Dashboard"; textSize = 22f; setTextColor(Color.WHITE); gravity = Gravity.CENTER }
         val email = EditText(this).apply { hint = "AC Infinity Email"; setHintTextColor(Color.GRAY); setTextColor(Color.WHITE); inputType = InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS }
         val pass = EditText(this).apply { hint = "Password"; setHintTextColor(Color.GRAY); setTextColor(Color.WHITE); inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD }
-        val status = TextView(this).apply { setTextColor(Color.parseColor("#F43F85")); gravity = Gravity.CENTER }
+        val status = TextView(this).apply { setTextColor(Color.parseColor("#10B981")); gravity = Gravity.CENTER }
         val btn = Button(this).apply {
-            text = "Connect Controllers"; setBackgroundColor(Color.parseColor("#F43F85")); setTextColor(Color.WHITE)
+            text = "Connect Controllers"; setBackgroundColor(Color.parseColor("#10B981")); setTextColor(Color.WHITE)
             setOnClickListener { status.text = "Connecting..."; login(email.text.toString().trim(), pass.text.toString()) { ok, msg -> handler.post { if (ok) showDashboard() else status.text = msg } } }
         }
         listOf(title, email, pass, btn, status).forEach { root.addView(it) }
@@ -44,7 +45,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showDashboard() {
-        dashboardView = DashboardView(this) { getSharedPreferences("aci_prefs", Context.MODE_PRIVATE).edit().clear().apply(); polling = false; showLogin() }
+        dashboardView = DashboardView(this) { getSharedPreferences("aci_prefs", Context.MODE_PRIVATE).edit().clear().apply(); token = null; polling = false; showLogin() }
         setContentView(dashboardView); polling = true; pollLoop()
     }
 
@@ -68,44 +69,31 @@ class MainActivity : AppCompatActivity() {
                 val res = JSONObject(apiPost("/api/user/appUserLogin", "appEmail=${URLEncoder.encode(email, "UTF-8")}&appPasswordl=${URLEncoder.encode(p, "UTF-8")}"))
                 if (res.optInt("code") == 200) {
                     token = res.getJSONObject("data").getString("appId")
-                    getSharedPreferences("aci_prefs", Context.MODE_PRIVATE).edit().putString("token", token).apply(); cb(true, "OK")
+                    getSharedPreferences("aci_prefs", Context.MODE_PRIVATE).edit().putString("token", token).putString("email", email).putString("pass", pass).commit(); cb(true, "OK")
                 } else cb(false, "API ${res.optInt("code")}: ${res.optString("msg")}")
             } catch (e: Exception) { cb(false, "Error: ${e.message}") }
         }
     }
 
     private fun fetchDevices() {
-        val tk = token ?: return
+        val prefs = getSharedPreferences("aci_prefs", Context.MODE_PRIVATE)
+        val tk = token ?: run { val e = prefs.getString("email", null); val p = prefs.getString("pass", null); if (e != null && p != null) login(e, p) { _, _ -> }; return }
         thread {
             try {
                 val res = JSONObject(apiPost("/api/user/devInfoListAll", "userId=${URLEncoder.encode(tk, "UTF-8")}", tk))
-                if (res.optInt("code") != 200) return@thread
+                if (res.optInt("code") != 200) { val e = prefs.getString("email", null); val p = prefs.getString("pass", null); if (e != null && p != null) login(e, p) { _, _ -> }; return@thread }
                 val arr = res.getJSONArray("data"); val list = mutableListOf<ControllerData>()
                 for (i in 0 until arr.length()) {
-                    val d = arr.getJSONObject(i); val info = d.optJSONObject("deviceInfo") ?: d
-                    val devType = d.optInt("devType", 11)
-                    var temp = info.optDouble("temperature", 2200.0) / 100.0
-                    var rh = info.optDouble("humidity", 5500.0) / 100.0
-                    var vpd = info.optDouble("vpdnums", 100.0) / 100.0
-                    var ph: Double? = null; var ec: Double? = null; var wt: Double? = null
-                    val sArr = info.optJSONArray("sensors")
+                    val d = arr.getJSONObject(i); val info = d.optJSONObject("deviceInfo") ?: d; val devType = d.optInt("devType", 11)
+                    var temp = info.optDouble("temperature", 2200.0) / 100.0; var rh = info.optDouble("humidity", 5500.0) / 100.0; var vpd = info.optDouble("vpdnums", 100.0) / 100.0
+                    var ph: Double? = null; var ec: Double? = null; var wt: Double? = null; val sArr = info.optJSONArray("sensors")
                     if (sArr != null) {
-                        var hasInsideVpd = false
+                        var hasVpd = false
                         for (s in 0 until sArr.length()) {
-                            val so = sArr.getJSONObject(s); val st = so.optInt("sensorType"); val sv = so.optDouble("sensorData") / 100.0
-                            when (st) {
-                                1 -> if (sv > 0) temp = sv
-                                2 -> if (sv > 0) rh = sv
-                                3 -> if (sv > 0) { vpd = sv; hasInsideVpd = true }
-                                10 -> if (sv > 0) ph = sv
-                                11 -> if (sv > 0) ec = sv
-                                12, 13 -> if (sv > 0) wt = sv
-                            }
+                            val so = sArr.getJSONObject(s); val sv = so.optDouble("sensorData") / 100.0
+                            when (so.optInt("sensorType")) { 1 -> if (sv > 0) temp = sv; 2 -> if (sv > 0) rh = sv; 3 -> if (sv > 0) { vpd = sv; hasVpd = true }; 10 -> if (sv > 0) ph = sv; 11 -> if (sv > 0) ec = sv; 12, 13 -> if (sv > 0) wt = sv }
                         }
-                        if (devType == 20 && !hasInsideVpd) {
-                            val svp = 0.61078 * exp((17.27 * temp) / (temp + 237.3))
-                            vpd = svp * (1.0 - rh / 100.0)
-                        }
+                        if (devType == 20 && !hasVpd) vpd = (0.61078 * exp((17.27 * temp) / (temp + 237.3))) * (1.0 - rh / 100.0)
                     }
                     val pArr = info.optJSONArray("ports"); val ports = mutableListOf<PortData>()
                     if (pArr != null) for (p in 0 until pArr.length()) {
@@ -116,8 +104,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     list.add(ControllerData(d.optString("devId", "$i"), d.optString("devName", "Controller"), devType, temp, rh, vpd, info.optInt("tTrend", 0), info.optInt("hTrend", 0), ph, ec, wt, ports))
                 }
-                val sorted = list.sortedByDescending { it.type == 20 }
-                handler.post { dashboardView.updateData(sorted) }
+                val sorted = list.sortedByDescending { it.type == 20 }; handler.post { dashboardView.updateData(sorted) }
             } catch (_: Exception) {}
         }
     }
