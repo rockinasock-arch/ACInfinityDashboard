@@ -65,6 +65,9 @@ class DashboardView(context: Context, private val onLogout: () -> Unit) : WebVie
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:sans-serif;user-select:none}
 body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-size:22px 22px;color:#F8FAFC;height:100vh;display:flex;overflow:hidden}
+.clk{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:#050608EB;border:1px solid #1E293B;border-radius:14px;padding:5px 16px;text-align:center;box-shadow:0 4px 16px #00000080}
+.ctm{font-size:21px;font-weight:800;letter-spacing:.06em;color:#F8FAFC;line-height:1.1}
+.cdt{font-size:9.5px;font-weight:700;letter-spacing:.1em;color:#94A3B8;margin-top:2px}
 .col{width:50%;padding:14px 18px 16px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
 .col:first-child{border-right:1px solid #1E293B;background:radial-gradient(circle at 50% 50%,#34D39920,transparent 70%)}
 .col:last-child{background:radial-gradient(circle at 50% 50%,#60A5FA20,transparent 70%)}
@@ -108,6 +111,7 @@ body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-
 </style>
 </head>
 <body>
+<div class="clk"><div class="ctm" id="ctm">--:--</div><div class="cdt" id="cdt">--- -- ---</div></div>
 <div class="col" id="fc" style="--c:#34D399">
   <div class="sun"></div><div class="sparks" id="fsp"></div>
   <div class="hdr"><span class="dot" onclick="App.tapDot()"></span><span style="color:#34D399">FLOWER AI+</span></div>
@@ -136,6 +140,13 @@ body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-
   <div class="ports" id="vp"></div>
 </div>
 <script>
+const DAYS = ['SUN','MON','TUE','WED','THU','FRI','SAT'], MONS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+function tick() {
+  const n = new Date();
+  document.getElementById('ctm').textContent = String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+  document.getElementById('cdt').textContent = DAYS[n.getDay()] + ' ' + n.getDate() + ' ' + MONS[n.getMonth()];
+}
+tick(); setInterval(tick, 1000);
 const S = {
   fan: '<circle cx="12" cy="12" r="2"/><path d="M12 10c0-3 2-6 4.5-5S18 9 14 11m-1 2.5c2.5 1.5 4 4.5 2 6s-4.5-.5-4-4.5m-2 0c-2.5 1.5-6 1.5-6-1s3-3.5 6-1"/>',
   bulb: '<path d="M9 18h6m-5 3h4M9 14c-2-1.5-3-3.5-3-6a6 6 0 1 1 12 0c0 2.5-1 4.5-3 6v1H9v-1z"/>',
