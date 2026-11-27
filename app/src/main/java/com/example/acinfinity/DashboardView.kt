@@ -67,14 +67,14 @@ class DashboardView(context: Context, private val onLogout: () -> Unit) : WebVie
 *{box-sizing:border-box;margin:0;padding:0;font-family:sans-serif;user-select:none}
 body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-size:22px 22px;animation:gd 60s linear infinite;color:#F8FAFC;height:100vh;display:flex;overflow:hidden}
 @keyframes gd{from{background-position:0 0}to{background-position:220px 220px}}
-.clk{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);z-index:10;background:#050608EB;border:1px solid #1E293B;border-radius:12px;padding:4px 12px;text-align:center;box-shadow:0 4px 16px #00000090}
+.clk{position:fixed;bottom:48px;left:50%;transform:translateX(-50%);z-index:10;background:#050608EB;border:1px solid #1E293B;border-radius:12px;padding:4px 12px;text-align:center;box-shadow:0 4px 16px #00000090}
 .ctm{font-size:20px;font-weight:800;letter-spacing:.05em;color:#F8FAFC;line-height:1.05}
 .cdt{font-size:9px;font-weight:700;letter-spacing:.08em;color:#94A3B8;margin-top:2px}
-.col{width:50%;padding:8px 14px 8px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.col{width:50%;padding:28px 14px 48px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
 .col:first-child{border-right:1px solid #1E293B}
-.glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 52%,var(--c),transparent 68%);opacity:.14;animation:gl 9s ease-in-out infinite}
+.glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 50%,var(--c),transparent 68%);opacity:.14;animation:gl 9s ease-in-out infinite}
 @keyframes gl{0%,100%{opacity:.11;transform:scale(.96)}50%{opacity:.22;transform:scale(1.05)}}
-.snr{position:absolute;top:52%;left:50%;width:140px;height:140px;margin:-70px 0 0 -70px;border-radius:50%;border:1.5px solid var(--c);opacity:0;pointer-events:none}
+.snr{position:absolute;top:50%;left:50%;width:140px;height:140px;margin:-70px 0 0 -70px;border-radius:50%;border:1.5px solid var(--c);opacity:0;pointer-events:none}
 .ping .snr{animation:sn 2.6s ease-out forwards}
 @keyframes sn{0%{opacity:.45;transform:scale(1)}100%{opacity:0;transform:scale(3.6)}}
 .sun{position:absolute;inset:0;background:linear-gradient(0deg,#F59E0B33 0%,#FACC1518 45%,transparent 85%);opacity:0;pointer-events:none}
@@ -87,14 +87,14 @@ body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-
 @keyframes fl{0%{opacity:0;transform:translateY(0) scale(.6)}25%{opacity:.95}100%{opacity:0;transform:translateY(-140px) scale(1.2)}}
 .hdr{display:flex;align-items:center;font-size:14px;font-weight:800;letter-spacing:.07em;z-index:2}
 .dot{width:10px;height:10px;border-radius:50%;background:#34D399;display:inline-block;margin-right:7px}
-.hyd{position:absolute;top:32px;left:14px;display:flex;gap:12px}
-.mring{position:relative;flex-shrink:0;width:58px;height:58px;border-radius:50%;border:2px solid var(--rc,#34D399);box-shadow:0 0 10px -2px var(--rc,#34D399);background:#05060880;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.mval{font-size:14px;font-weight:800;color:#F8FAFC}
-.mlbl{font-size:8.5px;color:#94A3B8;margin-top:1px;letter-spacing:.06em}
-.dial{position:absolute;top:6px;right:12px;width:108px;height:108px}
-.rings{display:flex;justify-content:space-around;align-items:center;padding:0 2px;margin-top:46px}
-.ring{position:relative;flex-shrink:0;width:25vmin;height:25vmin;max-width:152px;max-height:152px;border-radius:50%;border:2.5px solid var(--rc,var(--c));box-shadow:0 0 14px -2px var(--rc,var(--c));background:#05060866;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .6s,box-shadow .6s}
-.ring.vpd{width:31vmin;height:31vmin;max-width:186px;max-height:186px;border-width:3.5px;animation:br var(--bs,4s) ease-in-out infinite}
+.hyd{position:absolute;top:52px;left:14px;display:flex;gap:12px}
+.mring{position:relative;flex-shrink:0;width:54px;height:54px;border-radius:50%;border:2px solid var(--rc,#34D399);box-shadow:0 0 10px -2px var(--rc,#34D399);background:#05060880;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.mval{font-size:13px;font-weight:800;color:#F8FAFC}
+.mlbl{font-size:8px;color:#94A3B8;margin-top:1px;letter-spacing:.06em}
+.dial{position:absolute;top:26px;right:12px;width:96px;height:96px}
+.rings{display:flex;justify-content:space-around;align-items:center;padding:0 2px;margin-top:42px}
+.ring{position:relative;flex-shrink:0;width:23vmin;height:23vmin;max-width:132px;max-height:132px;border-radius:50%;border:2.5px solid var(--rc,var(--c));box-shadow:0 0 14px -2px var(--rc,var(--c));background:#05060866;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .6s,box-shadow .6s}
+.ring.vpd{width:29vmin;height:29vmin;max-width:162px;max-height:162px;border-width:3.5px;animation:br var(--bs,4s) ease-in-out infinite}
 .ripple{animation:rp .9s ease-out!important}
 .drip{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0;transition:opacity .6s}
 .up .drip,.dn .drip{opacity:1;animation:dp 3.4s ease-in-out infinite}
@@ -103,14 +103,14 @@ body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-
 .dn{--rot:180deg}
 @keyframes br{0%,100%{box-shadow:0 0 12px -2px var(--rc,var(--c))}50%{box-shadow:0 0 28px 3px var(--rc,var(--c))}}
 @keyframes rp{0%{box-shadow:0 0 0 0 var(--rc,var(--c))}100%{box-shadow:0 0 0 26px transparent}}
-.val{font-size:26px;font-weight:800}
-.vpd .val{font-size:37px}
-.lbl{font-size:11px;color:#94A3B8;margin-top:4px;letter-spacing:.08em}
-.ports{display:flex;justify-content:center;gap:14px;padding-bottom:2px}
+.val{font-size:24px;font-weight:800}
+.vpd .val{font-size:33px}
+.lbl{font-size:10px;color:#94A3B8;margin-top:3px;letter-spacing:.08em}
+.ports{display:flex;justify-content:center;gap:14px}
 .pt{display:flex;flex-direction:column;align-items:center;min-width:56px;font-size:9.5px;font-weight:700;color:#94A3B8}
-.pval{font-size:14px;font-weight:800;color:#F8FAFC;margin-bottom:3px}
-.pcirc{width:46px;height:46px;border-radius:50%;border:2px solid #334155;background:#05060880;display:flex;align-items:center;justify-content:center;color:#64748B}
-.pcirc svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pval{font-size:13.5px;font-weight:800;color:#F8FAFC;margin-bottom:3px}
+.pcirc{width:44px;height:44px;border-radius:50%;border:2px solid #334155;background:#05060880;display:flex;align-items:center;justify-content:center;color:#64748B}
+.pcirc svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .on .pcirc{border-color:var(--c);color:var(--c);box-shadow:0 0 12px var(--c)}
 .spin{animation:sp var(--spd,2s) linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
@@ -221,7 +221,7 @@ function dial(k, onM, offM, c) {
 function ports(id, list) {
   document.getElementById(id).innerHTML = list.map(p => {
     const sp = p.n.includes('FAN') && +p.v > 0 ? 'spin" style="--spd:' + Math.max(.3, 2.2 - p.v * .18) + 's' : '';
-    return '<div class="pt ' + (p.on ? 'on' : '') + '"><div class="pval">' + p.v + '</div><div class="pcirc"><svg class="' + sp + '" viewBox="0 0 24 24">' + svgFor(p.n) + '</svg></div><div style="margin-top:5px">' + p.n + '</div></div>';
+    return '<div class="pt ' + (p.on ? 'on' : '') + '"><div class="pval">' + p.v + '</div><div class="pcirc"><svg class="' + sp + '" viewBox="0 0 24 24">' + svgFor(p.n) + '</svg></div><div style="margin-top:4px">' + p.n + '</div></div>';
   }).join('');
 }
 function render(d) {
