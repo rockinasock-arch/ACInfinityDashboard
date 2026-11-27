@@ -65,9 +65,9 @@ class DashboardView(context: Context, private val onLogout: () -> Unit) : WebVie
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:sans-serif;user-select:none}
 body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-size:22px 22px;color:#F8FAFC;height:100vh;display:flex;overflow:hidden}
-.clk{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:#050608EB;border:1px solid #1E293B;border-radius:14px;padding:5px 16px;text-align:center;box-shadow:0 4px 16px #00000080}
-.ctm{font-size:21px;font-weight:800;letter-spacing:.06em;color:#F8FAFC;line-height:1.1}
-.cdt{font-size:9.5px;font-weight:700;letter-spacing:.1em;color:#94A3B8;margin-top:2px}
+.clk{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:10;background:#050608EB;border:1px solid #1E293B;border-radius:14px;padding:6px 14px;text-align:center;box-shadow:0 4px 16px #00000090}
+.ctm{font-size:22px;font-weight:800;letter-spacing:.05em;color:#F8FAFC;line-height:1.1}
+.cdt{font-size:9.5px;font-weight:700;letter-spacing:.09em;color:#94A3B8;margin-top:3px}
 .col{width:50%;padding:14px 18px 16px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
 .col:first-child{border-right:1px solid #1E293B;background:radial-gradient(circle at 50% 50%,#34D39920,transparent 70%)}
 .col:last-child{background:radial-gradient(circle at 50% 50%,#60A5FA20,transparent 70%)}
@@ -100,8 +100,8 @@ body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-
 .val{font-size:28px;font-weight:800}
 .vpd .val{font-size:39px}
 .lbl{font-size:11px;color:#94A3B8;margin-top:4px;letter-spacing:.08em}
-.ports{display:flex;justify-content:space-around;padding-bottom:2px}
-.pt{display:flex;flex-direction:column;align-items:center;font-size:12px;font-weight:700;color:#94A3B8}
+.ports{display:flex;justify-content:center;gap:18px;padding-bottom:2px}
+.pt{display:flex;flex-direction:column;align-items:center;min-width:66px;font-size:11.5px;font-weight:700;color:#94A3B8}
 .pval{font-size:16px;font-weight:800;color:#F8FAFC;margin-bottom:5px}
 .pcirc{width:54px;height:54px;border-radius:50%;border:2.5px solid #334155;background:#05060880;display:flex;align-items:center;justify-content:center;color:#64748B}
 .pcirc svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
