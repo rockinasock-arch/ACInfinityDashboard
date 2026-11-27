@@ -65,13 +65,18 @@ class DashboardView(context: Context, private val onLogout: () -> Unit) : WebVie
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:sans-serif;user-select:none}
-body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-size:22px 22px;color:#F8FAFC;height:100vh;display:flex;overflow:hidden}
+body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-size:22px 22px;animation:gd 60s linear infinite;color:#F8FAFC;height:100vh;display:flex;overflow:hidden}
+@keyframes gd{from{background-position:0 0}to{background-position:220px 220px}}
 .clk{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:10;background:#050608EB;border:1px solid #1E293B;border-radius:15px;padding:7px 16px;text-align:center;box-shadow:0 4px 18px #00000090}
 .ctm{font-size:25px;font-weight:800;letter-spacing:.05em;color:#F8FAFC;line-height:1.1}
 .cdt{font-size:10.5px;font-weight:700;letter-spacing:.09em;color:#94A3B8;margin-top:3px}
 .col{width:50%;padding:14px 18px 16px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
-.col:first-child{border-right:1px solid #1E293B;background:radial-gradient(circle at 50% 50%,#34D39920,transparent 70%)}
-.col:last-child{background:radial-gradient(circle at 50% 50%,#60A5FA20,transparent 70%)}
+.col:first-child{border-right:1px solid #1E293B}
+.glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 52%,var(--c),transparent 68%);opacity:.14;animation:gl 9s ease-in-out infinite}
+@keyframes gl{0%,100%{opacity:.11;transform:scale(.96)}50%{opacity:.22;transform:scale(1.05)}}
+.snr{position:absolute;top:52%;left:50%;width:140px;height:140px;margin:-70px 0 0 -70px;border-radius:50%;border:1.5px solid var(--c);opacity:0;pointer-events:none}
+.ping .snr{animation:sn 2.6s ease-out forwards}
+@keyframes sn{0%{opacity:.45;transform:scale(1)}100%{opacity:0;transform:scale(3.6)}}
 .sun{position:absolute;inset:0;background:linear-gradient(0deg,#F59E0B33 0%,#FACC1518 45%,transparent 85%);opacity:0;pointer-events:none}
 .sunrise .sun{animation:sr 4.5s ease-out forwards}
 @keyframes sr{0%{opacity:0;transform:translateY(40%)}30%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-15%)}}
@@ -83,13 +88,13 @@ body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-
 .hdr{display:flex;align-items:center;font-size:15px;font-weight:800;letter-spacing:.07em}
 .dot{width:11px;height:11px;border-radius:50%;background:#34D399;display:inline-block;margin-right:8px}
 .hyd{position:absolute;top:42px;left:20px;display:flex;gap:16px}
-.mring{position:relative;width:68px;height:68px;border-radius:50%;border:2px solid var(--rc,#34D399);box-shadow:0 0 12px -2px var(--rc,#34D399);background:#05060880;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.mring{position:relative;flex-shrink:0;width:68px;height:68px;border-radius:50%;border:2px solid var(--rc,#34D399);box-shadow:0 0 12px -2px var(--rc,#34D399);background:#05060880;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .mval{font-size:16px;font-weight:800;color:#F8FAFC}
 .mlbl{font-size:9.5px;color:#94A3B8;margin-top:2px;letter-spacing:.06em}
 .dial{position:absolute;top:8px;right:14px;width:124px;height:124px}
-.rings{display:flex;justify-content:space-between;align-items:center;padding:0 2px;margin-top:64px}
-.ring{position:relative;width:28vmin;height:28vmin;max-width:166px;max-height:166px;border-radius:50%;border:2.5px solid var(--rc,var(--c));box-shadow:0 0 14px -2px var(--rc,var(--c));background:#05060866;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .6s,box-shadow .6s}
-.ring.vpd{width:34vmin;height:34vmin;max-width:198px;max-height:198px;border-width:3.5px;animation:br var(--bs,4s) ease-in-out infinite}
+.rings{display:flex;justify-content:space-around;align-items:center;padding:0 2px;margin-top:64px}
+.ring{position:relative;flex-shrink:0;width:25vmin;height:25vmin;max-width:152px;max-height:152px;border-radius:50%;border:2.5px solid var(--rc,var(--c));box-shadow:0 0 14px -2px var(--rc,var(--c));background:#05060866;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .6s,box-shadow .6s}
+.ring.vpd{width:31vmin;height:31vmin;max-width:186px;max-height:186px;border-width:3.5px;animation:br var(--bs,4s) ease-in-out infinite}
 .ripple{animation:rp .9s ease-out!important}
 .drip{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0;transition:opacity .6s}
 .up .drip,.dn .drip{opacity:1;animation:dp 3.4s ease-in-out infinite}
@@ -98,8 +103,8 @@ body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-
 .dn{--rot:180deg}
 @keyframes br{0%,100%{box-shadow:0 0 12px -2px var(--rc,var(--c))}50%{box-shadow:0 0 28px 3px var(--rc,var(--c))}}
 @keyframes rp{0%{box-shadow:0 0 0 0 var(--rc,var(--c))}100%{box-shadow:0 0 0 26px transparent}}
-.val{font-size:28px;font-weight:800}
-.vpd .val{font-size:39px}
+.val{font-size:26px;font-weight:800}
+.vpd .val{font-size:37px}
 .lbl{font-size:11px;color:#94A3B8;margin-top:4px;letter-spacing:.08em}
 .ports{display:flex;justify-content:center;gap:18px;padding-bottom:2px}
 .pt{display:flex;flex-direction:column;align-items:center;min-width:64px;font-size:10.5px;font-weight:700;color:#94A3B8}
@@ -114,7 +119,7 @@ body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-
 <body>
 <div class="clk"><div class="ctm" id="ctm">--:--</div><div class="cdt" id="cdt">--- -- ---</div></div>
 <div class="col" id="fc" style="--c:#34D399">
-  <div class="sun"></div><div class="sparks" id="fsp"></div>
+  <div class="glow"></div><div class="snr"></div><div class="sun"></div><div class="sparks" id="fsp"></div>
   <div class="hdr"><span class="dot" onclick="App.tapDot()"></span><span style="color:#34D399">FLOWER AI+</span></div>
   <div class="hyd">
     <div class="mring" id="phr"><div class="mval" id="ph">--</div><div class="mlbl">pH</div></div>
@@ -130,7 +135,7 @@ body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-
   <div class="ports" id="fp"></div>
 </div>
 <div class="col" id="vc" style="--c:#60A5FA">
-  <div class="sun"></div><div class="sparks" id="vsp"></div>
+  <div class="glow"></div><div class="snr"></div><div class="sun"></div><div class="sparks" id="vsp"></div>
   <div class="hdr"><span style="color:#60A5FA">VEG 69+</span></div>
   <svg class="dial" id="vd" viewBox="0 0 64 64"></svg>
   <div class="rings">
@@ -225,12 +230,11 @@ function render(d) {
     document.getElementById(k + 't').textContent = d[k].t;
     document.getElementById(k + 'v').textContent = d[k].v;
     document.getElementById(k + 'h').textContent = d[k].h;
-    const tr = document.getElementById(k + 'tr'), vr = document.getElementById(k + 'vr'), hr = document.getElementById(k + 'hr');
+    const tr = document.getElementById(k + 'tr'), vr = document.getElementById(k + 'vr'), hr = document.getElementById(k + 'hr'), col = document.getElementById(k + 'c');
     tint(tr, d[k].t, t1, t2, ok); tint(vr, d[k].v, v1, v2, ok); tint(hr, d[k].h, h1, h2, ok);
     trend(tr, k + 't', d[k].t, 0.15); trend(vr, k + 'v', d[k].v, 0.02); trend(hr, k + 'h', d[k].h, 0.4);
-    vr.classList.remove('ripple');
-    void vr.offsetWidth;
-    vr.classList.add('ripple');
+    vr.classList.remove('ripple'); void vr.offsetWidth; vr.classList.add('ripple');
+    if (col) { col.classList.remove('ping'); void col.offsetWidth; col.classList.add('ping'); }
     ports(k + 'p', d[k].p);
     dial(k, d[k].on, d[k].off, ok);
   });
