@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(dashboardView); polling = true; pollLoop()
     }
 
-    private fun pollLoop() { if (!polling) return; fetchDevices(); handler.postDelayed({ pollLoop() }, 15000) }
+    private fun pollLoop() { if (!polling) return; fetchDevices(); handler.postDelayed({ pollLoop() }, 10000) }
 
     private fun apiPost(path: String, body: String, tk: String? = null): String {
         val conn = (URL("http", listOf("www", "acinfinityserver", "com").joinToString("."), path).openConnection() as HttpURLConnection).apply {
