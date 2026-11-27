@@ -64,19 +64,19 @@ class DashboardView(context: Context, private val onLogout: () -> Unit) : WebVie
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:sans-serif;user-select:none}
-body{background:#050608;color:#F8FAFC;height:100vh;display:flex;overflow:hidden}
+body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-size:22px 22px;color:#F8FAFC;height:100vh;display:flex;overflow:hidden}
 .col{width:50%;padding:14px 18px 16px;display:flex;flex-direction:column;justify-content:space-between;position:relative}
-.col:first-child{border-right:1px solid #1E293B;background:radial-gradient(circle at 50% 50%,#34D39916,transparent 72%)}
-.col:last-child{background:radial-gradient(circle at 50% 50%,#60A5FA16,transparent 72%)}
+.col:first-child{border-right:1px solid #1E293B;background:radial-gradient(circle at 50% 50%,#34D39920,transparent 70%)}
+.col:last-child{background:radial-gradient(circle at 50% 50%,#60A5FA20,transparent 70%)}
 .hdr{display:flex;align-items:center;font-size:15px;font-weight:800;letter-spacing:.07em}
 .dot{width:11px;height:11px;border-radius:50%;background:#34D399;display:inline-block;margin-right:8px}
 .hyd{position:absolute;top:46px;left:22px;display:flex;gap:14px}
-.mring{position:relative;width:50px;height:50px;border-radius:50%;border:1.8px solid var(--rc,#34D399);box-shadow:0 0 10px -2px var(--rc,#34D399);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.mring{position:relative;width:50px;height:50px;border-radius:50%;border:1.8px solid var(--rc,#34D399);box-shadow:0 0 10px -2px var(--rc,#34D399);background:#05060880;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .mval{font-size:12px;font-weight:800;color:#F8FAFC}
 .mlbl{font-size:8px;color:#94A3B8;margin-top:1px;letter-spacing:.06em}
 .dial{position:absolute;top:10px;right:14px;width:105px;height:105px}
 .rings{display:flex;justify-content:space-between;align-items:center;padding:0 2px;margin-top:52px}
-.ring{position:relative;width:28vmin;height:28vmin;max-width:166px;max-height:166px;border-radius:50%;border:2.5px solid var(--rc,var(--c));box-shadow:0 0 14px -2px var(--rc,var(--c));display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .6s,box-shadow .6s}
+.ring{position:relative;width:28vmin;height:28vmin;max-width:166px;max-height:166px;border-radius:50%;border:2.5px solid var(--rc,var(--c));box-shadow:0 0 14px -2px var(--rc,var(--c));background:#05060866;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .6s,box-shadow .6s}
 .ring.vpd{width:34vmin;height:34vmin;max-width:198px;max-height:198px;border-width:3.5px;animation:br var(--bs,4s) ease-in-out infinite}
 .ripple{animation:rp .9s ease-out!important}
 .drip{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0;transition:opacity .6s}
@@ -92,7 +92,7 @@ body{background:#050608;color:#F8FAFC;height:100vh;display:flex;overflow:hidden}
 .ports{display:flex;justify-content:space-around;padding-bottom:2px}
 .pt{display:flex;flex-direction:column;align-items:center;font-size:12px;font-weight:700;color:#94A3B8}
 .pval{font-size:16px;font-weight:800;color:#F8FAFC;margin-bottom:5px}
-.pcirc{width:54px;height:54px;border-radius:50%;border:2.5px solid #334155;display:flex;align-items:center;justify-content:center;color:#64748B}
+.pcirc{width:54px;height:54px;border-radius:50%;border:2.5px solid #334155;background:#05060880;display:flex;align-items:center;justify-content:center;color:#64748B}
 .pcirc svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .on .pcirc{border-color:var(--c);color:var(--c);box-shadow:0 0 14px var(--c)}
 .spin{animation:sp var(--spd,2s) linear infinite}
