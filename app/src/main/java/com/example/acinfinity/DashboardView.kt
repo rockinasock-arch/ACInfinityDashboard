@@ -71,14 +71,19 @@ body{background:#050608;color:#F8FAFC;height:100vh;display:flex;overflow:hidden}
 .hdr{display:flex;align-items:center;font-size:15px;font-weight:800;letter-spacing:.07em}
 .dot{width:11px;height:11px;border-radius:50%;background:#34D399;display:inline-block;margin-right:8px}
 .hyd{position:absolute;top:46px;left:22px;display:flex;gap:14px}
-.mring{width:50px;height:50px;border-radius:50%;border:1.8px solid #34D399;box-shadow:0 0 10px -2px #34D399;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.mring{position:relative;width:50px;height:50px;border-radius:50%;border:1.8px solid var(--rc,#34D399);box-shadow:0 0 10px -2px var(--rc,#34D399);display:flex;flex-direction:column;align-items:center;justify-content:center}
 .mval{font-size:12px;font-weight:800;color:#F8FAFC}
 .mlbl{font-size:8px;color:#94A3B8;margin-top:1px;letter-spacing:.06em}
 .dial{position:absolute;top:10px;right:14px;width:105px;height:105px}
 .rings{display:flex;justify-content:space-between;align-items:center;padding:0 2px;margin-top:52px}
-.ring{width:28vmin;height:28vmin;max-width:166px;max-height:166px;border-radius:50%;border:2.5px solid var(--rc,var(--c));box-shadow:0 0 14px -2px var(--rc,var(--c));display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .6s,box-shadow .6s}
+.ring{position:relative;width:28vmin;height:28vmin;max-width:166px;max-height:166px;border-radius:50%;border:2.5px solid var(--rc,var(--c));box-shadow:0 0 14px -2px var(--rc,var(--c));display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .6s,box-shadow .6s}
 .ring.vpd{width:34vmin;height:34vmin;max-width:198px;max-height:198px;border-width:3.5px;animation:br var(--bs,4s) ease-in-out infinite}
 .ripple{animation:rp .9s ease-out!important}
+.drip{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0;transition:opacity .6s}
+.up .drip,.dn .drip{opacity:1;animation:dp 3.4s ease-in-out infinite}
+.dn .drip{transform:rotate(180deg)}
+@keyframes dp{0%,100%{transform:scale(1) rotate(var(--rot,0deg))}50%{transform:scale(1.04) rotate(var(--rot,0deg))}}
+.dn{--rot:180deg}
 @keyframes br{0%,100%{box-shadow:0 0 12px -2px var(--rc,var(--c))}50%{box-shadow:0 0 28px 3px var(--rc,var(--c))}}
 @keyframes rp{0%{box-shadow:0 0 0 0 var(--rc,var(--c))}100%{box-shadow:0 0 0 26px transparent}}
 .val{font-size:28px;font-weight:800}
@@ -98,9 +103,9 @@ body{background:#050608;color:#F8FAFC;height:100vh;display:flex;overflow:hidden}
 <div class="col" style="--c:#34D399">
   <div class="hdr"><span class="dot" onclick="App.tapDot()"></span><span style="color:#34D399">FLOWER AI+</span></div>
   <div class="hyd">
-    <div class="mring"><div class="mval" id="ph">--</div><div class="mlbl">pH</div></div>
-    <div class="mring"><div class="mval" id="ec">--</div><div class="mlbl">EC</div></div>
-    <div class="mring"><div class="mval" id="wt">--</div><div class="mlbl">TEMP</div></div>
+    <div class="mring" id="phr"><div class="mval" id="ph">--</div><div class="mlbl">pH</div></div>
+    <div class="mring" id="ecr"><div class="mval" id="ec">--</div><div class="mlbl">EC</div></div>
+    <div class="mring" id="wtr"><div class="mval" id="wt">--</div><div class="mlbl">TEMP</div></div>
   </div>
   <svg class="dial" id="fd" viewBox="0 0 64 64"></svg>
   <div class="rings">
@@ -128,6 +133,23 @@ const S = {
   dehum: '<path d="M12 3l5.5 6.5a7.5 7.5 0 1 1-11 0L12 3z"/><path d="M12 10v6m-2.5-2.5L12 16l2.5-2.5"/>',
   hum: '<path d="M12 3l5.5 6.5a7.5 7.5 0 1 1-11 0L12 3z"/><path d="M9.5 16c1-1.5 4-1.5 5 0M10.5 13.5c.8-1 2.2-1 3 0"/>'
 };
+const hist = {};
+document.querySelectorAll('.ring,.mring').forEach(el => {
+  el.insertAdjacentHTML('beforeend', '<svg class="drip" viewBox="0 0 100 100"><path d="M 30 5 Q 50 16 70 5 A 48 48 0 0 0 30 5 Z" fill="var(--rc,var(--c,#34D399))" opacity="0.85"/></svg>');
+});
+function trend(el, id, val, eps) {
+  const n = parseFloat(val);
+  if (isNaN(n)) return;
+  const h = hist[id] || (hist[id] = []);
+  h.push(n);
+  if (h.length > 20) h.shift();
+  const avg = h.reduce((a, b) => a + b, 0) / h.length;
+  el.classList.remove('up', 'dn');
+  if (h.length >= 3) {
+    if (n - avg > eps) el.classList.add('up');
+    else if (avg - n > eps) el.classList.add('dn');
+  }
+}
 function svgFor(n) {
   if (n.includes('DEHUM')) return S.dehum;
   if (n.includes('HUMID')) return S.hum;
@@ -173,10 +195,9 @@ function render(d) {
     document.getElementById(k + 't').textContent = d[k].t;
     document.getElementById(k + 'v').textContent = d[k].v;
     document.getElementById(k + 'h').textContent = d[k].h;
-    tint(document.getElementById(k + 'tr'), d[k].t, t1, t2, ok);
-    tint(document.getElementById(k + 'vr'), d[k].v, v1, v2, ok);
-    tint(document.getElementById(k + 'hr'), d[k].h, h1, h2, ok);
-    const vr = document.getElementById(k + 'vr');
+    const tr = document.getElementById(k + 'tr'), vr = document.getElementById(k + 'vr'), hr = document.getElementById(k + 'hr');
+    tint(tr, d[k].t, t1, t2, ok); tint(vr, d[k].v, v1, v2, ok); tint(hr, d[k].h, h1, h2, ok);
+    trend(tr, k + 't', d[k].t, 0.15); trend(vr, k + 'v', d[k].v, 0.02); trend(hr, k + 'h', d[k].h, 0.4);
     vr.classList.remove('ripple');
     void vr.offsetWidth;
     vr.classList.add('ripple');
@@ -187,10 +208,12 @@ function render(d) {
     document.getElementById('ph').textContent = d.f.ph;
     document.getElementById('ec').textContent = d.f.ec;
     document.getElementById('wt').textContent = d.f.wt;
+    trend(document.getElementById('phr'), 'ph', d.f.ph, 0.04);
+    trend(document.getElementById('ecr'), 'ec', d.f.ec, 0.03);
+    trend(document.getElementById('wtr'), 'wt', d.f.wt, 0.15);
   }
 }
 </script>
 </body>
 </html>"""
 }
-
