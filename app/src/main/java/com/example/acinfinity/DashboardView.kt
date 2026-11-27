@@ -74,7 +74,7 @@ body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-
 .col:first-child{border-right:1px solid #1E293B}
 .glow{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 50%,var(--c),transparent 68%);opacity:.14;animation:gl 9s ease-in-out infinite}
 @keyframes gl{0%,100%{opacity:.11;transform:scale(.96)}50%{opacity:.22;transform:scale(1.05)}}
-.snr{position:absolute;top:50%;left:50%;width:140px;height:140px;margin:-70px 0 0 -70px;border-radius:50%;border:1.5px solid var(--c);opacity:0;pointer-events:none}
+.snr{position:absolute;top:52%;left:50%;width:140px;height:140px;margin:-70px 0 0 -70px;border-radius:50%;border:1.5px solid var(--c);opacity:0;pointer-events:none}
 .ping .snr{animation:sn 2.6s ease-out forwards}
 @keyframes sn{0%{opacity:.45;transform:scale(1)}100%{opacity:0;transform:scale(3.6)}}
 .sun{position:absolute;inset:0;background:linear-gradient(0deg,#F59E0B33 0%,#FACC1518 45%,transparent 85%);opacity:0;pointer-events:none}
@@ -88,11 +88,11 @@ body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-
 .hdr{display:flex;align-items:center;font-size:14px;font-weight:800;letter-spacing:.07em;z-index:2}
 .dot{width:10px;height:10px;border-radius:50%;background:#34D399;display:inline-block;margin-right:7px}
 .hyd{position:absolute;top:52px;left:14px;display:flex;gap:12px}
-.mring{position:relative;flex-shrink:0;width:66px;height:66px;border-radius:50%;border:2px solid var(--rc,#34D399);box-shadow:0 0 11px -2px var(--rc,#34D399);background:#05060880;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.mval{font-size:15px;font-weight:800;color:#F8FAFC}
-.mlbl{font-size:9px;color:#94A3B8;margin-top:2px;letter-spacing:.06em}
-.dial{position:absolute;top:26px;right:12px;width:118px;height:118px}
-.rings{display:flex;justify-content:space-around;align-items:center;padding:0 2px;margin-top:46px}
+.mring{position:relative;flex-shrink:0;width:82px;height:82px;border-radius:50%;border:2.2px solid var(--rc,#34D399);box-shadow:0 0 12px -2px var(--rc,#34D399);background:#05060880;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.mval{font-size:18px;font-weight:800;color:#F8FAFC}
+.mlbl{font-size:10px;color:#94A3B8;margin-top:2px;letter-spacing:.06em}
+.dial{position:absolute;top:26px;right:12px;width:142px;height:142px}
+.rings{display:flex;justify-content:space-around;align-items:center;padding:0 2px;margin-top:62px}
 .ring{position:relative;flex-shrink:0;width:23vmin;height:23vmin;max-width:132px;max-height:132px;border-radius:50%;border:2.5px solid var(--rc,var(--c));box-shadow:0 0 14px -2px var(--rc,var(--c));background:#05060866;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .6s,box-shadow .6s}
 .ring.vpd{width:29vmin;height:29vmin;max-width:162px;max-height:162px;border-width:3.5px;animation:br var(--bs,4s) ease-in-out infinite}
 .ripple{animation:rp .9s ease-out!important}
