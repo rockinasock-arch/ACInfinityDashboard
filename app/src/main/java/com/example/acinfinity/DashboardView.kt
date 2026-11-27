@@ -65,9 +65,17 @@ class DashboardView(context: Context, private val onLogout: () -> Unit) : WebVie
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:sans-serif;user-select:none}
 body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-size:22px 22px;color:#F8FAFC;height:100vh;display:flex;overflow:hidden}
-.col{width:50%;padding:14px 18px 16px;display:flex;flex-direction:column;justify-content:space-between;position:relative}
+.col{width:50%;padding:14px 18px 16px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
 .col:first-child{border-right:1px solid #1E293B;background:radial-gradient(circle at 50% 50%,#34D39920,transparent 70%)}
 .col:last-child{background:radial-gradient(circle at 50% 50%,#60A5FA20,transparent 70%)}
+.sun{position:absolute;inset:0;background:linear-gradient(0deg,#F59E0B33 0%,#FACC1518 45%,transparent 85%);opacity:0;pointer-events:none}
+.sunrise .sun{animation:sr 4.5s ease-out forwards}
+@keyframes sr{0%{opacity:0;transform:translateY(40%)}30%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-15%)}}
+.e420 .dial{filter:drop-shadow(0 0 10px #FACC15);animation:p4 1.6s ease-in-out infinite}
+@keyframes p4{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.sparks{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.sparks i{position:absolute;bottom:18%;width:5px;height:5px;border-radius:50%;background:#34D399;box-shadow:0 0 8px #FACC15;animation:fl 3.2s ease-out infinite}
+@keyframes fl{0%{opacity:0;transform:translateY(0) scale(.6)}25%{opacity:.95}100%{opacity:0;transform:translateY(-140px) scale(1.2)}}
 .hdr{display:flex;align-items:center;font-size:15px;font-weight:800;letter-spacing:.07em}
 .dot{width:11px;height:11px;border-radius:50%;background:#34D399;display:inline-block;margin-right:8px}
 .hyd{position:absolute;top:46px;left:22px;display:flex;gap:14px}
@@ -100,7 +108,8 @@ body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-
 </style>
 </head>
 <body>
-<div class="col" style="--c:#34D399">
+<div class="col" id="fc" style="--c:#34D399">
+  <div class="sun"></div><div class="sparks" id="fsp"></div>
   <div class="hdr"><span class="dot" onclick="App.tapDot()"></span><span style="color:#34D399">FLOWER AI+</span></div>
   <div class="hyd">
     <div class="mring" id="phr"><div class="mval" id="ph">--</div><div class="mlbl">pH</div></div>
@@ -115,7 +124,8 @@ body{background:#050608 radial-gradient(#1E293B 1px,transparent 1px);background-
   </div>
   <div class="ports" id="fp"></div>
 </div>
-<div class="col" style="--c:#60A5FA">
+<div class="col" id="vc" style="--c:#60A5FA">
+  <div class="sun"></div><div class="sparks" id="vsp"></div>
   <div class="hdr"><span style="color:#60A5FA">VEG 69+</span></div>
   <svg class="dial" id="vd" viewBox="0 0 64 64"></svg>
   <div class="rings">
@@ -133,7 +143,7 @@ const S = {
   dehum: '<path d="M12 3l5.5 6.5a7.5 7.5 0 1 1-11 0L12 3z"/><path d="M12 10v6m-2.5-2.5L12 16l2.5-2.5"/>',
   hum: '<path d="M12 3l5.5 6.5a7.5 7.5 0 1 1-11 0L12 3z"/><path d="M9.5 16c1-1.5 4-1.5 5 0M10.5 13.5c.8-1 2.2-1 3 0"/>'
 };
-const hist = {};
+const hist = {}, prevOn = {};
 document.querySelectorAll('.ring,.mring').forEach(el => {
   el.insertAdjacentHTML('beforeend', '<svg class="drip" viewBox="0 0 100 100"><path d="M 30 5 Q 50 16 70 5 A 48 48 0 0 0 30 5 Z" fill="var(--rc,var(--c,#34D399))" opacity="0.85"/></svg>');
 });
@@ -165,23 +175,31 @@ function tint(el, v, lo, hi, ok) {
   el.style.setProperty('--rc', c);
   el.style.setProperty('--bs', c === ok ? '4s' : '1.8s');
 }
-function dial(id, onM, offM, c) {
-  const el = document.getElementById(id);
+function dial(k, onM, offM, c) {
+  const el = document.getElementById(k + 'd'), col = document.getElementById(k + 'c'), sp = document.getElementById(k + 'sp');
   if (!el || onM == null || onM < 0 || offM < 0) { if (el) el.innerHTML = ''; return; }
   const now = new Date(), cur = now.getHours() * 60 + now.getMinutes();
   const isOn = onM < offM ? (cur >= onM && cur < offM) : (cur >= onM || cur < offM);
+  if (prevOn[k] === false && isOn && col) { col.classList.remove('sunrise'); void col.offsetWidth; col.classList.add('sunrise'); }
+  prevOn[k] = isOn;
+  const is420 = (now.getHours() % 12 === 4) && now.getMinutes() === 20;
+  if (col) col.classList.toggle('e420', is420);
+  if (sp) sp.innerHTML = is420 ? '<i style="left:22%;animation-delay:0s"></i><i style="left:50%;animation-delay:.8s"></i><i style="left:76%;animation-delay:1.5s"></i>' : '';
   const nxt = isOn ? offM : onM, rem = (nxt - cur + 1440) % 1440, dur = (offM - onM + 1440) % 1440;
   const pt = (m, r) => { const a = (m / 1440) * 2 * Math.PI - Math.PI / 2; return [32 + r * Math.cos(a), 32 + r * Math.sin(a)]; };
   const [x1, y1] = pt(onM, 26), [x2, y2] = pt(offM, 26), [nx, ny] = pt(cur, 23);
+  const ico = isOn
+    ? '<circle cx="32" cy="19.5" r="2.2" fill="#FACC15"/><path d="M32 15.5v1.3M32 22.2v1.3M28 19.5h1.3M34.7 19.5H36M29.2 16.7l.9.9M33.9 21.4l.9.9M34.8 16.7l-.9.9M30.1 21.4l-.9.9" stroke="#FACC15" stroke-width="1.1" stroke-linecap="round"/>'
+    : '<path d="M33.6 17.5a3.2 3.2 0 1 0 2.9 4.5 2.7 2.7 0 0 1-2.9-4.5z" fill="#93C5FD"/>';
   el.innerHTML = '<path d="M32 2v4M62 32h-4M32 62v-4M2 32h4" stroke="#475569" stroke-width="1.3" stroke-linecap="round"/>'
     + '<circle cx="32" cy="32" r="26" fill="none" stroke="#1E293B" stroke-width="5"/>'
-    + '<path d="M ' + x1.toFixed(1) + ' ' + y1.toFixed(1) + ' A 26 26 0 ' + (dur > 720 ? 1 : 0) + ' 1 ' + x2.toFixed(1) + ' ' + y2.toFixed(1) + '" fill="none" stroke="' + c + '" stroke-width="5" stroke-linecap="round"/>'
+    + '<path d="M ' + x1.toFixed(1) + ' ' + y1.toFixed(1) + ' A 26 26 0 ' + (dur > 720 ? 1 : 0) + ' 1 ' + x2.toFixed(1) + ' ' + y2.toFixed(1) + '" fill="none" stroke="' + (is420 ? '#FACC15' : c) + '" stroke-width="5" stroke-linecap="round"/>'
     + '<circle cx="' + x1.toFixed(1) + '" cy="' + y1.toFixed(1) + '" r="2.6" fill="#F8FAFC"/>'
     + '<circle cx="' + x2.toFixed(1) + '" cy="' + y2.toFixed(1) + '" r="2.6" fill="#050608" stroke="' + c + '" stroke-width="1.5"/>'
     + '<line x1="32" y1="32" x2="' + nx.toFixed(1) + '" y2="' + ny.toFixed(1) + '" stroke="#FACC15" stroke-width="1.8" stroke-linecap="round"/>'
-    + '<circle cx="32" cy="32" r="16" fill="#050608"/>'
-    + '<text x="32" y="31" text-anchor="middle" fill="#F8FAFC" font-size="9.5" font-weight="800">' + Math.floor(rem / 60) + ':' + String(rem % 60).padStart(2, '0') + '</text>'
-    + '<text x="32" y="40" text-anchor="middle" fill="#94A3B8" font-size="6.5" font-weight="700">' + (isOn ? 'TO OFF' : 'TO ON') + '</text>';
+    + '<circle cx="32" cy="32" r="16.5" fill="#050608"/>' + ico
+    + '<text x="32" y="33.5" text-anchor="middle" fill="#F8FAFC" font-size="9" font-weight="800">' + Math.floor(rem / 60) + ':' + String(rem % 60).padStart(2, '0') + '</text>'
+    + '<text x="32" y="41.5" text-anchor="middle" fill="#94A3B8" font-size="6" font-weight="700">' + (isOn ? 'TO OFF' : 'TO ON') + '</text>';
 }
 function ports(id, list) {
   document.getElementById(id).innerHTML = list.map(p => {
@@ -202,7 +220,7 @@ function render(d) {
     void vr.offsetWidth;
     vr.classList.add('ripple');
     ports(k + 'p', d[k].p);
-    dial(k + 'd', d[k].on, d[k].off, ok);
+    dial(k, d[k].on, d[k].off, ok);
   });
   if (d.f) {
     document.getElementById('ph').textContent = d.f.ph;
